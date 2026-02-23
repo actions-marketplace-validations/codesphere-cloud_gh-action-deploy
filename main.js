@@ -46632,6 +46632,7 @@ var require_pattern = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var code_1 = require_code2();
+    var util_1 = require_util9();
     var codegen_1 = require_codegen();
     var error = {
       message: ({ schemaCode }) => (0, codegen_1.str)`must match pattern "${schemaCode}"`,
@@ -46644,10 +46645,18 @@ var require_pattern = __commonJS({
       $data: true,
       error,
       code(cxt) {
-        const { data, $data, schema, schemaCode, it } = cxt;
+        const { gen, data, $data, schema, schemaCode, it } = cxt;
         const u = it.opts.unicodeRegExp ? "u" : "";
-        const regExp = $data ? (0, codegen_1._)`(new RegExp(${schemaCode}, ${u}))` : (0, code_1.usePattern)(cxt, schema);
-        cxt.fail$data((0, codegen_1._)`!${regExp}.test(${data})`);
+        if ($data) {
+          const { regExp } = it.opts.code;
+          const regExpCode = regExp.code === "new RegExp" ? (0, codegen_1._)`new RegExp` : (0, util_1.useFunc)(gen, regExp);
+          const valid = gen.let("valid");
+          gen.try(() => gen.assign(valid, (0, codegen_1._)`${regExpCode}(${schemaCode}, ${u}).test(${data})`), () => gen.assign(valid, false));
+          cxt.fail$data((0, codegen_1._)`!${valid}`);
+        } else {
+          const regExp = (0, code_1.usePattern)(cxt, schema);
+          cxt.fail$data((0, codegen_1._)`!${regExp}.test(${data})`);
+        }
       }
     };
     exports2.default = def;
@@ -57055,6 +57064,7 @@ var toReplicaInfo = toObject({
   role: toLiteralUnion("role", replicaStatusRoles),
   server: toUndefOr(toString)
 });
+var isReplicaInfo = (e) => isOfType(e, toReplicaInfo);
 var toReplicaInfoOrErrorStatus = toOr(toReplicaInfo, toReplicaErrorStatus);
 var toLandscapeInfo = toObject({
   status: toLandscapeStatus,
@@ -57468,9 +57478,14 @@ var toUrl = (x) => {
     throw new TypeConversionFailure("URL string", x);
   }
 };
+var toCustomImageOpts = toObject({
+  useDefaultEntrypoint: toBoolean,
+  args: toUndefOr(toArray(toString))
+});
 var toStage = toObject({
   steps: toArray(toStep),
-  healthEndpoint: toUndefOr(toUrl)
+  healthEndpoint: toUndefOr(toUrl),
+  customImageOpts: toUndefOr(toCustomImageOpts)
 });
 var toEnv = toRecord(toString);
 var toSimpleNetworkConfig = toObject({
@@ -57504,7 +57519,8 @@ var toDeployStageServerFields = {
   env: toUndefOr(toEnv),
   baseImage: toUndefOr(toString),
   runAsUser: toUndefOr(toUserGroupId),
-  runAsGroup: toUndefOr(toUserGroupId)
+  runAsGroup: toUndefOr(toUserGroupId),
+  customImageOpts: toUndefOr(toCustomImageOpts)
 };
 var toDeployStageServer = toObject(toDeployStageServerFields);
 var toManagedServiceConfigFields = {
@@ -57613,6 +57629,14 @@ var server = {
   runAsGroup: toUndefOr(toNonNegativeInteger)
 };
 var toServer = toObject(server);
+var toHeadlessService = toObject({
+  name: toString,
+  network: toArray(toObject({
+    path: toUrlPath,
+    target: toString,
+    stripPath: toBoolean
+  }))
+});
 var serverV1 = {
   name: readOnly(toMsdServerName),
   planId: toPlanId,
@@ -57849,7 +57873,8 @@ var workspaceDeploymentService = {
     getWorkspaceHost: rpc({
       access: "internal",
       response: toWorkspaceHost,
-      request: toGetWorkspaceHostArgs
+      request: toGetWorkspaceHostArgs,
+      defaultOptions: { timeout: duration({ seconds: 30 }) }
     }),
     removePvc: rpc({
       access: "internal",
@@ -59386,6 +59411,10 @@ var { withAuthnStub, withStubForAddress } = createStubUtils({
 var import_inversify8 = __toESM(require_inversify(), 1);
 
 // packages/workspace-agent/common/lib/pipeline/config.js
+var toCustomImage = toObject({
+  entrypoint: toUndefOr(toArray(toString)),
+  cmd: toUndefOr(toArray(toString))
+});
 var toPipelineMetaConfig = toObject({
   configDir: toString,
   workingDirectory: toString,
@@ -59396,7 +59425,8 @@ var toPipelineMetaConfig = toObject({
   serverName: toString,
   workspaceId: toNonNegativeInteger,
   otelLogCollectorHostname: toUndefOr(toString),
-  persistentLogs: toUndefOr(toBoolean)
+  persistentLogs: toUndefOr(toBoolean),
+  customImage: toUndefOr(toCustomImage)
 });
 
 // packages/workspace-agent/common/lib/pipeline/logging.js
@@ -61812,7 +61842,7 @@ var deployWorkspace = async (workspaces, deployment, pipeline, replica, args) =>
       throw new StartWorkspaceFailed(toError(e).message);
     }
   }
-  await waitForWorkspaceStatus(replica, ws.id, WorkspaceStatus.Running);
+  await waitForWorkspaceStatus(replica, ws.id, (info) => isReplicaInfo(info) && info.server === IDE_SERVER_NAME && info.status === WorkspaceStatus.Running);
   if (created && args.runPrepareOnCreation) {
     await runPipelineStage("prepare", "success", pipeline, ws.id, {
       processCleanupWaitTime: args.processCleanupWaitTime,
@@ -61924,14 +61954,13 @@ var startLogStream = (pipeline, workspaceId, stage, step) => restreamOnError(() 
     logs.forEach((log2) => logI(`[Pipeline ${stage}[${step}]] ${log2.data}`));
   }
 });
-var waitForWorkspaceStatus = async (replicaStub, workspaceId, status) => {
+var waitForWorkspaceStatus = async (replicaStub, workspaceId, fulfillsCondition) => {
   const p = resolvablePromise();
   const close = restreamOnError(() => replicaStub.info(), async (s) => {
     await s.send({ workspaceId });
     while (true) {
       const info = await s.recv();
-      logI(`Waiting for workspace to be "${status}": ${info.status}`);
-      if (info.status === status) {
+      if (fulfillsCondition(info)) {
         p.resolve();
         return;
       }
