@@ -53780,12 +53780,12 @@ var toDuration = (tMs) => {
 // packages/utils/common/lib/errors/registry.js
 var isSerializableError = (x) => {
   const s = x;
-  return typeof (s === null || s === void 0 ? void 0 : s.toJSON) === "function";
+  return typeof s?.toJSON === "function";
 };
 var MUTABLE_REGISTRY = /* @__PURE__ */ new Map();
 var REGISTRY = MUTABLE_REGISTRY;
 var doRegisterError = (name, target) => {
-  name = name !== null && name !== void 0 ? name : target.name;
+  name = name ?? target.name;
   if (!name) {
     throw new Error(`no name given, got: <${name}>`);
   }
@@ -53857,7 +53857,7 @@ var isPublicException = (e) => {
 };
 var SimpleSerializableException = class extends Exception {
   constructor(message, opts) {
-    super(isPublicException(opts === null || opts === void 0 ? void 0 : opts.cause) ? `${message} (Cause: ${opts === null || opts === void 0 ? void 0 : opts.cause})` : message, opts);
+    super(isPublicException(opts?.cause) ? `${message} (Cause: ${opts?.cause})` : message, opts);
   }
   static fromJson(x) {
     if (!isString(x)) {
@@ -53906,13 +53906,12 @@ NotAuthorized = __decorate([
   registerError()
 ], NotAuthorized);
 var TokenExpired = class TokenExpired2 extends SimpleSerializableException {
-  constructor(opts) {
-    super("Your Token expired, please create a new one.", opts);
+  static create(opts) {
+    return new this("Your Token expired, please create a new one.", opts);
   }
 };
 TokenExpired = __decorate([
-  registerError(),
-  __metadata("design:paramtypes", [Object])
+  registerError()
 ], TokenExpired);
 var InvalidArgument = class InvalidArgument2 extends SimpleSerializableException {
 };
@@ -54016,20 +54015,15 @@ MultiException = MultiException_1 = __decorate([
   __metadata("design:paramtypes", [Array, String])
 ], MultiException);
 var INTERNAL_EXCEPTION_MSG = "Internal server error";
-var getOtelTraceId = () => {
-  var _a;
-  return (_a = trace.getSpan(context.active())) === null || _a === void 0 ? void 0 : _a.spanContext().traceId;
-};
+var getOtelTraceId = () => trace.getSpan(context.active())?.spanContext().traceId;
 var InternalException = InternalException_1 = class InternalException2 extends Exception {
   constructor({ traceId, opts } = {}) {
-    var _a;
-    const id = (_a = traceId !== null && traceId !== void 0 ? traceId : getOtelTraceId()) !== null && _a !== void 0 ? _a : randomString(InternalException_1.ID_LENGTH);
+    const id = traceId ?? getOtelTraceId() ?? randomString(InternalException_1.ID_LENGTH);
     super(`${INTERNAL_EXCEPTION_MSG} ${id}`, opts);
     this.traceId = id;
   }
   static fromJson(x) {
-    var _a;
-    const id = trimPrefix((_a = ignoreError(() => JSON.parse(x))) !== null && _a !== void 0 ? _a : x, INTERNAL_EXCEPTION_MSG).trim();
+    const id = trimPrefix(ignoreError(() => JSON.parse(x)) ?? x, INTERNAL_EXCEPTION_MSG).trim();
     if (!(matchesRandomString(id, InternalException_1.ID_LENGTH) || matchesRandomString(id, InternalException_1.OTEL_TRACEID_LENGTH))) {
       throw new TypeError(`${id} not a serialized InternalException`);
     }
@@ -54128,11 +54122,10 @@ ${err.stack}` + (has(err.cause) ? `
 [cause]: ${formatError(toError(err.cause))}` : "");
 };
 var formatSimply = (entry) => {
-  var _a;
   const err = entry.cause;
   const span = activeSpanDetails();
   const traceStr = span ? `[${span.traceId.substring(0, 6)}:${span.spanId.substring(0, 6)}] ` : "";
-  const tag = ((_a = entry.tags) === null || _a === void 0 ? void 0 : _a.length) ? `(${entry.tags.map((t) => `#${t}`).join(", ")}) ` : "";
+  const tag = entry.tags?.length ? `(${entry.tags.map((t) => `#${t}`).join(", ")}) ` : "";
   return `${traceStr}${tag}${formatMessage(entry.message)}${formatError(err)}`;
 };
 var formatWithDetails = (entry) => {
@@ -54146,10 +54139,7 @@ var levelColors = {
   [LogLevel.Error]: import_chalk.default.red
 };
 var formatInColor = (format) => {
-  return (entry) => {
-    var _a;
-    return ((_a = levelColors[entry.level]) !== null && _a !== void 0 ? _a : import_chalk.default.black)(format(entry));
-  };
+  return (entry) => (levelColors[entry.level] ?? import_chalk.default.black)(format(entry));
 };
 var formatAsJson = (entry) => {
   const message = has(entry.message) ? (0, import_util.inspect)(entry.message, { depth: null }) : "";
@@ -54164,8 +54154,8 @@ var formatAsJson = (entry) => {
     code: entry.level <= LogLevel.Info ? Status.Ok : Status.Error,
     level: entry.level,
     tags: entry.tags,
-    traceId: span === null || span === void 0 ? void 0 : span.traceId,
-    spanId: span === null || span === void 0 ? void 0 : span.spanId
+    traceId: span?.traceId,
+    spanId: span?.spanId
   });
 };
 var ConsoleLogger = class _ConsoleLogger extends FormattingLogger {
@@ -54240,9 +54230,8 @@ var LogEntry = class {
   }
 };
 LogEntry.create = (level, message, options) => {
-  var _a;
-  const cause = options === null || options === void 0 ? void 0 : options.cause;
-  const t = (_a = options === null || options === void 0 ? void 0 : options.tag) !== null && _a !== void 0 ? _a : [];
+  const cause = options?.cause;
+  const t = options?.tag ?? [];
   const tags = Array.isArray(t) ? t : [t];
   if (message instanceof Error) {
     if (has(cause)) {
@@ -54256,7 +54245,7 @@ LogEntry.create = (level, message, options) => {
 var activeSpanDetails = () => {
   const c = context.active();
   const span = trace.getSpan(c);
-  return span === null || span === void 0 ? void 0 : span.spanContext();
+  return span?.spanContext();
 };
 
 // packages/utils/common/lib/logging.js
@@ -54303,13 +54292,12 @@ var loggerForEnv = (env) => {
   }
 };
 var initLogging = (env, showDebugLogs = true) => {
-  var _a;
   if (initializedAt) {
     throw new AlreadyInitialized(`Logging already initialized here:
 ${initializedAt}
 `);
   }
-  initializedAt = ((_a = Error().stack) !== null && _a !== void 0 ? _a : "\nUnknown location").split("\n").slice(2).map((x) => x.replace(/^    at /, "      @ ")).join("\n");
+  initializedAt = (Error().stack ?? "\nUnknown location").split("\n").slice(2).map((x) => x.replace(/^    at /, "      @ ")).join("\n");
   LOGGER = new ForwardingLogger(showDebugLogs).addLogger(loggerForEnv(env));
   return LOGGER;
 };
@@ -54432,9 +54420,8 @@ var threw = (func) => {
   }
 };
 var withCurrentStack = (error) => {
-  var _a, _b;
   const e = toError(error);
-  const currentStack = (_b = (_a = Error().stack) === null || _a === void 0 ? void 0 : _a.split("\n").slice(1)) !== null && _b !== void 0 ? _b : [];
+  const currentStack = Error().stack?.split("\n").slice(1) ?? [];
   e.stack = [e.stack, "Rethrown at: ", ...currentStack].join("\n");
   return e;
 };
@@ -54517,7 +54504,7 @@ var throwOnTimeout = async ({ label, timeoutMs, promise, interrupt }) => {
           timedOut = true;
         } catch (e) {
         }
-        throw new TimedOut(`throwOnTimeout(${label !== null && label !== void 0 ? label : ""})`, timeout.asSeconds());
+        throw new TimedOut(`throwOnTimeout(${label ?? ""})`, timeout.asSeconds());
       })()
     ]);
   } catch (e) {
@@ -54678,10 +54665,9 @@ var toPositiveNumber = toRestrictedNumber("toPositiveNumber", (n) => n > 0);
 // packages/utils/common/lib/typing.js
 var TypeConversionFailure = class extends Exception {
   constructor(expectedType, value, location, opts) {
-    var _a, _b;
-    super((_a = opts === null || opts === void 0 ? void 0 : opts.customErrorMessage) !== null && _a !== void 0 ? _a : [
+    super(opts?.customErrorMessage ?? [
       `expected a type of '${expectedType}'`,
-      `, got: '${value && ((_b = logError(() => pp`${value}`)) !== null && _b !== void 0 ? _b : "<potentially circular object>")}'`,
+      `, got: '${value && (logError(() => pp`${value}`) ?? "<potentially circular object>")}'`,
       location ? `, at ${location}` : ""
     ].join(""), opts);
     this.expectedType = expectedType;
@@ -54729,7 +54715,7 @@ var toArray = (convert, refine) => {
     const a = x.map((value, index, array) => {
       try {
         const r = convert(value);
-        refine === null || refine === void 0 ? void 0 : refine(r, index, array);
+        refine?.(r, index, array);
         return { value: r };
       } catch (e) {
         if (e instanceof TypeConversionFailure) {
@@ -54862,7 +54848,7 @@ var toObject = (spec, options) => {
     }
     const entries = Object.entries(spec).map(([name, convert]) => {
       try {
-        if ((options === null || options === void 0 ? void 0 : options.strict) && !(name in obj)) {
+        if (options?.strict && !(name in obj)) {
           return [
             name,
             {
@@ -55077,7 +55063,6 @@ var defaultBackoff = {
   maxWaitMs: defaultBackoffDuration.maxWait ? toDuration(defaultBackoffDuration.maxWait).asMilliseconds() : void 0
 };
 var retryWithBackoff = (retryFn, config = defaultBackoff) => {
-  var _a;
   const conf = isBackoffConfigDuration(config) ? config : {
     initialWait: { milliseconds: config.initialWaitMs },
     factor: config.factor,
@@ -55100,32 +55085,31 @@ var retryWithBackoff = (retryFn, config = defaultBackoff) => {
     }
   })();
   const t = throwOnTimeout({
-    label: (_a = conf.errMessage) !== null && _a !== void 0 ? _a : "retryWithBackoff",
+    label: conf.errMessage ?? "retryWithBackoff",
     timeoutMs: toDuration(conf.timeout).asMilliseconds(),
     promise: res,
     interrupt: () => {
       repeat2 = false;
-      w === null || w === void 0 ? void 0 : w.finish();
+      w?.finish();
     }
   });
   t.interrupt = () => {
     interrupted = true;
     repeat2 = false;
-    w === null || w === void 0 ? void 0 : w.interrupt();
+    w?.interrupt();
   };
   t.finish = () => {
     repeat2 = false;
-    w === null || w === void 0 ? void 0 : w.finish();
+    w?.finish();
   };
   return t;
 };
 var nextDurationMs = (lastMs, config) => {
-  var _a;
   const initialWait = toDuration(config.initialWait);
   if (config.factor <= 1) {
     return initialWait.asMilliseconds();
   }
-  return Math.min(lastMs * config.factor, toDuration((_a = config.maxWait) !== null && _a !== void 0 ? _a : maxTimeout).asMilliseconds());
+  return Math.min(lastMs * config.factor, toDuration(config.maxWait ?? maxTimeout).asMilliseconds());
 };
 
 // packages/utils/node/lib/getEnv.js
@@ -55213,7 +55197,6 @@ var RefNotExist = class extends Exception {
   }
 };
 var fetchGitHubActionPrConfig = async () => {
-  var _a;
   const { eventName, payload, repo } = github.context;
   const { owner, repo: repoName } = repo;
   if ("pull_request" !== eventName) {
@@ -55239,7 +55222,7 @@ var fetchGitHubActionPrConfig = async () => {
       number: prNum,
       branch: getEnv("GITHUB_HEAD_REF"),
       headCommitSha: pr.head.sha,
-      description: (_a = pr.body) !== null && _a !== void 0 ? _a : ""
+      description: pr.body ?? ""
     }
   };
 };
@@ -55603,10 +55586,9 @@ var StreamBuffer = class {
     return 0 === this.buffer.length;
   }
   closeSync(ex) {
-    var _a;
     this.throwIfClosed();
     this.closeE = ex;
-    (_a = this.pending) === null || _a === void 0 ? void 0 : _a.reject(ex);
+    this.pending?.reject(ex);
     this.pending = void 0;
     this.closed.resolve();
   }
@@ -55696,9 +55678,8 @@ var TransportBase = class {
     }
   }
   openConnection() {
-    var _a;
     this.opened = true;
-    (_a = this.connected) === null || _a === void 0 ? void 0 : _a.resolve();
+    this.connected?.resolve();
   }
   recvMessage(data) {
     try {
@@ -55727,10 +55708,9 @@ var TransportBase = class {
     }
   }
   abortConnection(err) {
-    var _a;
     logD(`onerror ${this}: ${err}`);
     if (!this.opened) {
-      (_a = this.connected) === null || _a === void 0 ? void 0 : _a.reject(err);
+      this.connected?.reject(err);
     }
   }
 };
@@ -55801,9 +55781,8 @@ var WebSocketTransport = class _WebSocketTransport extends TransportBase {
     this.socket.close(CloseCode.Normal);
   }
   toString() {
-    var _a;
     const st = this.socket.readyState;
-    return `WebSocketTransport(address=${(_a = this.socket.url) !== null && _a !== void 0 ? _a : "<incoming connection, has no address>"}, isAlive=${this.isAlive}, readyState=${st}:${ReadyState[st]})`;
+    return `WebSocketTransport(address=${this.socket.url ?? "<incoming connection, has no address>"}, isAlive=${this.isAlive}, readyState=${st}:${ReadyState[st]})`;
   }
 };
 
@@ -55865,14 +55844,13 @@ var toProcedureErrorResponse = toObject({
 });
 var toNewProcedureResponse = toOr(toProcedureDataResponse, toProcedureErrorResponse);
 var toProcedureResponse = (x, ver) => {
-  var _a;
   switch (ver) {
     case ProtocolVersion.Legacy:
       return procedureResponseFromLegacy(x);
     case ProtocolVersion.Streamy:
       return toNewProcedureResponse(x);
   }
-  return (_a = ignoreError(() => toNewProcedureResponse(x))) !== null && _a !== void 0 ? _a : procedureResponseFromLegacy(x);
+  return ignoreError(() => toNewProcedureResponse(x)) ?? procedureResponseFromLegacy(x);
 };
 var toDataRequest = toObject({
   streamId: toNonNegativeInteger,
@@ -55931,9 +55909,8 @@ var procedureRequestToWire = (msg, ver) => {
   }
 };
 var procedureResponseFromLegacy = (msg) => {
-  var _a, _b;
   const replyMsg = msg;
-  const isOk = Status2.Ok === ((_b = (_a = replyMsg.reply) === null || _a === void 0 ? void 0 : _a.code) !== null && _b !== void 0 ? _b : Status2.Ok);
+  const isOk = Status2.Ok === (replyMsg.reply?.code ?? Status2.Ok);
   const r = replyMsg.reply;
   const id = toNonNegativeInteger(replyMsg.endpointId);
   return isOk ? {
@@ -55971,7 +55948,7 @@ var streamRequestToLegacy = (r) => {
   };
 };
 var streamRequestToWire = (msg, ver) => {
-  switch (ver !== null && ver !== void 0 ? ver : ProtocolVersion.Legacy) {
+  switch (ver ?? ProtocolVersion.Legacy) {
     case ProtocolVersion.Legacy:
       return streamRequestToLegacy(msg);
     case ProtocolVersion.Streamy:
@@ -55980,16 +55957,15 @@ var streamRequestToWire = (msg, ver) => {
   throw new Error(`BUG: invalid protocol version: ${ver}`);
 };
 var streamResponseFromLegacy = (msg) => {
-  var _a, _b;
   if (!isObject(msg)) {
     throw new InvalidFormat(`expected a Message object, got: ${msg}`);
   }
   const replyMsg = msg;
-  const isOk = Status2.Ok === ((_b = (_a = replyMsg.reply) === null || _a === void 0 ? void 0 : _a.code) !== null && _b !== void 0 ? _b : Status2.Ok);
+  const isOk = Status2.Ok === (replyMsg.reply?.code ?? Status2.Ok);
   const r = replyMsg.reply;
   return {
     streamId: toNonNegativeInteger(replyMsg.endpointId),
-    ...isOk ? replyMsg.complete ? { close: true } : { data: r !== null && r !== void 0 ? r : null } : { error: { name: `${r.errName}`, data: `${r.errMessage}` } }
+    ...isOk ? replyMsg.complete ? { close: true } : { data: r ?? null } : { error: { name: `${r.errName}`, data: `${r.errMessage}` } }
   };
 };
 var Status2;
@@ -56201,9 +56177,8 @@ var ChannelStream = class _ChannelStream {
     await this.completeAndClose(reason, status, cause);
   }
   createStreamClosed(reason, recvStatus, sendStatus, cause) {
-    var _a, _b;
     const toCloseStatus = (s) => s === StreamStatus.Completed ? s : StreamStatus.Aborted;
-    return new StreamClosed(this.id, this.method, (_a = this.recvS.isAlive ? recvStatus : null) !== null && _a !== void 0 ? _a : toCloseStatus(this.recvS.status), (_b = this.sendS.isAlive ? sendStatus : null) !== null && _b !== void 0 ? _b : toCloseStatus(this.sendS.status), reason, cause ? deserializeError(cause) : void 0);
+    return new StreamClosed(this.id, this.method, (this.recvS.isAlive ? recvStatus : null) ?? toCloseStatus(this.recvS.status), (this.sendS.isAlive ? sendStatus : null) ?? toCloseStatus(this.sendS.status), reason, cause ? deserializeError(cause) : void 0);
   }
 };
 var deserializeError = (data) => {
@@ -56339,7 +56314,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
       service,
       method,
       data,
-      ctx !== null && ctx !== void 0 ? ctx : this.context,
+      ctx ?? this.context,
       { ...this.rpcOptions, ...opts }
     ];
     return trace.getTracer("streamy.client").startActiveSpan(`${service}.${method}`, {
@@ -56349,7 +56324,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
         "rpc.method": method,
         "rpc.service": service
       }
-    }, activeOtelContext !== null && activeOtelContext !== void 0 ? activeOtelContext : context.active(), async (span) => {
+    }, activeOtelContext ?? context.active(), async (span) => {
       try {
         const res = await this.callImmediately(...args);
         span.setStatus({ code: SpanStatusCode.OK });
@@ -56364,7 +56339,6 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
     });
   }
   async callImmediately(service, method, data, context3, opts) {
-    var _a;
     const id = nextRequestId();
     const resp = this.rpcs[id] = resolvablePromise();
     try {
@@ -56383,7 +56357,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
       resp.reject(toError(e));
       await resp;
     }
-    const traceId = (_a = trace.getActiveSpan()) === null || _a === void 0 ? void 0 : _a.spanContext().traceId;
+    const traceId = trace.getActiveSpan()?.spanContext().traceId;
     const timeoutMsg = `timeout: service=${service}, method=${method}, id=${id}, traceId=${traceId}`;
     try {
       return await throwOnTimeout({
@@ -56414,7 +56388,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
     }
     this.throwIfNotReady();
     const id = nextRequestId();
-    return this.streams[id] = await ChannelStream.create(this.transport, this.serializer, id, service, method, toResponse, toRequest, this.protocol, context3 !== null && context3 !== void 0 ? context3 : this.context);
+    return this.streams[id] = await ChannelStream.create(this.transport, this.serializer, id, service, method, toResponse, toRequest, this.protocol, context3 ?? this.context);
   }
   async close() {
     await this.doClose();
@@ -56456,8 +56430,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
     }
   }
   async maybeRecvStreamMessage(data) {
-    var _a;
-    const r = (_a = ignoreError(() => toStreamResponse(data))) !== null && _a !== void 0 ? _a : ignoreError(() => streamResponseFromLegacy(data));
+    const r = ignoreError(() => toStreamResponse(data)) ?? ignoreError(() => streamResponseFromLegacy(data));
     if (!r) {
       return false;
     }
@@ -56523,12 +56496,11 @@ var SharedSimpleStreamyClientProvider = class {
     return `SharedSimpleStreamyClientProvider(${this.serverName})`;
   }
   async aquire() {
-    var _a;
     this.throwIfClosed();
     while (this.reconnecting) {
       await this.reconnecting;
     }
-    if ((_a = this.client) === null || _a === void 0 ? void 0 : _a.isAlive) {
+    if (this.client?.isAlive) {
       return this.client;
     }
     try {
@@ -56543,13 +56515,12 @@ var SharedSimpleStreamyClientProvider = class {
     return SimpleStreamyClient.forTransportWithProtocol(await this.createTransport(`${await this.resolveAddress(this.serverName)}`), this.serializer, ProtocolVersion.Streamy, this.rpcOptions);
   }
   async close() {
-    var _a;
     this.throwIfClosed();
     this.open = false;
     while (this.reconnecting) {
       await this.reconnecting;
     }
-    await ((_a = this.client) === null || _a === void 0 ? void 0 : _a.close());
+    await this.client?.close();
   }
   throwIfClosed() {
     if (!this.open) {
@@ -57507,7 +57478,7 @@ var toAdvancedNetworkConfig = toObject({
 });
 var toNetworkConfig = toOr(toSimpleNetworkConfig, toAdvancedNetworkConfig);
 var MAX_USER_GROUP_ID = 2 ** 31 - 1;
-var toUserGroupId = toRestrictedNumber("toUserGroupId", (n) => n > 0 && n <= MAX_USER_GROUP_ID);
+var toUserGroupId = toRestrictedNumber("toUserGroupId", (n) => n >= 0 && n <= MAX_USER_GROUP_ID);
 var toDeployStageServerFields = {
   steps: toArray(toStep),
   healthEndpoint: toUndefOr(toUrl),
@@ -57652,24 +57623,21 @@ var uniqueServerId = ({ workspaceId, name }) => `${workspaceId}-${name}`;
 var IDE_SERVER_NAME = "codesphere-ide";
 var DEFAULT_PORT = 3e3;
 var workspaceDevDomain = (workspaceId, workspaceHostingBaseDomain) => `${workspaceId}-${DEFAULT_PORT}.${workspaceHostingBaseDomain}`;
-var simpleNetworkToServerNetwork = (networkConfig, isPublic) => {
-  var _a;
-  return {
-    ports: [
-      {
-        port: DEFAULT_PORT,
-        isPublic: isPublic !== null && isPublic !== void 0 ? isPublic : true
-      }
-    ],
-    paths: !networkConfig || !(isPublic !== null && isPublic !== void 0 ? isPublic : true) ? [] : [
-      {
-        port: DEFAULT_PORT,
-        path: networkConfig.path,
-        stripPath: (_a = networkConfig.stripPath) !== null && _a !== void 0 ? _a : false
-      }
-    ]
-  };
-};
+var simpleNetworkToServerNetwork = (networkConfig, isPublic) => ({
+  ports: [
+    {
+      port: DEFAULT_PORT,
+      isPublic: isPublic ?? true
+    }
+  ],
+  paths: !networkConfig || !(isPublic ?? true) ? [] : [
+    {
+      port: DEFAULT_PORT,
+      path: networkConfig.path,
+      stripPath: networkConfig.stripPath ?? false
+    }
+  ]
+});
 var advancedNetworkToServerNetwork = (networkConfig) => ({
   ...networkConfig,
   paths: networkConfig.paths.map((p) => ({ stripPath: false, ...p }))
@@ -57682,20 +57650,17 @@ var configToLandscape = (config) => {
     return deployStageServerToLandscape(k, v);
   }).filter((x) => x !== void 0);
 };
-var deployStageServerToLandscape = (name, config) => {
-  var _a, _b, _c;
-  return toServer({
-    name,
-    planId: config.plan,
-    replicas: (_a = config.replicas) !== null && _a !== void 0 ? _a : 1,
-    mountSubPath: config.mountSubPath || void 0,
-    env: config.env,
-    baseImage: config.baseImage || void 0,
-    runAsUser: (_b = config.runAsUser) !== null && _b !== void 0 ? _b : void 0,
-    runAsGroup: (_c = config.runAsGroup) !== null && _c !== void 0 ? _c : void 0,
-    network: config.network && isAdvancedNetworkConfig(config.network) ? advancedNetworkToServerNetwork(config.network) : simpleNetworkToServerNetwork(config.network, config.isPublic)
-  });
-};
+var deployStageServerToLandscape = (name, config) => toServer({
+  name,
+  planId: config.plan,
+  replicas: config.replicas ?? 1,
+  mountSubPath: config.mountSubPath || void 0,
+  env: config.env,
+  baseImage: config.baseImage || void 0,
+  runAsUser: config.runAsUser ?? void 0,
+  runAsGroup: config.runAsGroup ?? void 0,
+  network: config.network && isAdvancedNetworkConfig(config.network) ? advancedNetworkToServerNetwork(config.network) : simpleNetworkToServerNetwork(config.network, config.isPublic)
+});
 
 // packages/deployment-service/common/lib/PrometheusResponse.js
 var toUnixTimeAndValueTuple = toTuple(toNumber, toOr(toString, toNumber));
@@ -57764,7 +57729,8 @@ var __decorate4 = function(decorators, target, key, desc) {
 };
 var baseImage = {
   name: toString,
-  supportedUntil: toDate
+  supportedUntil: toDate,
+  default: toUndefOr(toBoolean)
 };
 var toBaseImage = toObject(baseImage);
 var toFlavorConfig = toObject({
@@ -58011,7 +57977,7 @@ var Reply = class _Reply {
         code: Status.Error,
         errName: Error.name,
         errMessage: message
-      }, stack !== null && stack !== void 0 ? stack : new Error().stack, errScope);
+      }, stack ?? new Error().stack, errScope);
     }
     return _Reply.createFromError(message);
   }
@@ -58025,7 +57991,6 @@ var Reply = class _Reply {
     return new _Reply(reply, reply.code === Status.Ok ? void 0 : new Error().stack);
   }
   static createFromError(err) {
-    var _a;
     if (!has(err) || !hasAll(err.message, err.stack)) {
       return _Reply.getUnparseable(JSON.stringify(err));
     }
@@ -58033,7 +57998,7 @@ var Reply = class _Reply {
       code: Status.Error,
       errName: err.name,
       errMessage: err.message
-    }, (_a = err.stack) !== null && _a !== void 0 ? _a : new Error().stack, err instanceof Exception ? err.scope : "internal");
+    }, err.stack ?? new Error().stack, err instanceof Exception ? err.scope : "internal");
   }
   static setLogAsJson(logAsJson) {
     _Reply.logAsJson = logAsJson;
@@ -58097,12 +58062,11 @@ var Reply = class _Reply {
     return this;
   }
   throwIfError() {
-    var _a;
     if (this.ok()) {
       return this;
     }
     const err = new Error(this.getErrorMessage());
-    err.name = (_a = this.getErrorName()) !== null && _a !== void 0 ? _a : Error.name;
+    err.name = this.getErrorName() ?? Error.name;
     if (has(this.stack)) {
       err.stack = this.stack;
     }
@@ -58393,6 +58357,13 @@ var GitProviderKind;
   GitProviderKind2["AzureDevOps"] = "azure-dev-ops";
 })(GitProviderKind || (GitProviderKind = {}));
 var toGitProviderKind = toStringEnum("GitProviderKind", GitProviderKind);
+var gitProviderDisplayName = {
+  [GitProviderKind.GitHub]: "GitHub",
+  [GitProviderKind.GitLab]: "GitLab",
+  [GitProviderKind.Bitbucket]: "Bitbucket",
+  [GitProviderKind.ScmManager]: "SCM Manager",
+  [GitProviderKind.AzureDevOps]: "Azure DevOps"
+};
 
 // packages/ide/common/lib/GitProvider.js
 var gitProvider = {
@@ -58482,8 +58453,7 @@ var __decorate6 = function(decorators, target, key, desc) {
 };
 var NotConnectedToProvider = class NotConnectedToProvider2 extends SimpleSerializableException {
   static create(provider, opts) {
-    var _a;
-    const providerName = (_a = Object.entries(GitProviderKind).find(([, v]) => v === provider)) === null || _a === void 0 ? void 0 : _a[0];
+    const providerName = Object.entries(GitProviderKind).find(([, v]) => v === provider)?.[0];
     return new this(`Not connected to git provider: ${providerName}. Connect to the provider in User Settings`, opts);
   }
 };
@@ -58948,22 +58918,20 @@ var __metadata2 = function(k, v) {
 var PasswordResetExpired_1;
 var DeactivateUserFailed_1;
 var InvalidCredentials = class InvalidCredentials2 extends SimpleSerializableException {
-  constructor(opts) {
-    super("Invalid credentials", opts);
+  static create(opts) {
+    return new this("Invalid credentials", opts);
   }
 };
 InvalidCredentials = __decorate8([
-  registerError(),
-  __metadata2("design:paramtypes", [Object])
+  registerError()
 ], InvalidCredentials);
 var UserDeleted = class UserDeleted2 extends SimpleSerializableException {
-  constructor(opts) {
-    super("User is deleted", opts);
+  static create(opts) {
+    return new this("User is deleted", opts);
   }
 };
 UserDeleted = __decorate8([
-  registerError(),
-  __metadata2("design:paramtypes", [Object])
+  registerError()
 ], UserDeleted);
 var RecaptchaCheckFailed = class RecaptchaCheckFailed2 extends SimpleSerializableException {
   constructor(msg, opts) {
@@ -59350,10 +59318,7 @@ var restreamOnError = (connect, process2, retryOpts = {
   }))());
   const close = async () => {
     reconnect = false;
-    await logErrorAsync(async () => {
-      var _a;
-      return await ((_a = await sP) === null || _a === void 0 ? void 0 : _a.close());
-    });
+    await logErrorAsync(async () => await (await sP)?.close());
     await done;
   };
   close.done = done;
@@ -59585,9 +59550,6 @@ var __decorate11 = function(decorators, target, key, desc) {
   else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
   return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata4 = function(k, v) {
-  if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 var workspaceAlreadyExists = (name) => `The workspace with the name "${name}" already exists`;
 var InvalidWorkspaceName = class extends Exception {
   constructor(reason) {
@@ -59602,13 +59564,9 @@ var FreeWorkspaceLimitReached = class FreeWorkspaceLimitReached2 extends SimpleS
       ` (in use: ${inUse}, requested: ${requested}).`
     ].join(""));
   }
-  constructor(msg) {
-    super(msg);
-  }
 };
 FreeWorkspaceLimitReached = __decorate11([
-  registerError(),
-  __metadata4("design:paramtypes", [String])
+  registerError()
 ], FreeWorkspaceLimitReached);
 
 // packages/workspace-service/node/lib/data-access/WorkspacesDAO.js
@@ -59785,7 +59743,6 @@ var SqlIn = class extends SqlPartWithValue {
     this.values = values;
   }
   toSql(dialect) {
-    var _a;
     const hasUndefined = this.values.some((v) => v.getVal() === void 0);
     const definedValues = this.values.filter((v) => v.getVal() !== void 0);
     const inClause = definedValues.length > 0 ? `${this.column.toSql()} IN (${definedValues.map((v) => v.toSql(dialect)).join(", ")})` : void 0;
@@ -59793,7 +59750,7 @@ var SqlIn = class extends SqlPartWithValue {
     if (inClause && nullClause) {
       return `(${inClause} OR ${nullClause})`;
     }
-    return (_a = inClause !== null && inClause !== void 0 ? inClause : nullClause) !== null && _a !== void 0 ? _a : "FALSE";
+    return inClause ?? nullClause ?? "FALSE";
   }
   getVal() {
     return this.values.filter((v) => v.getVal() !== void 0).map((v) => v.getVal());
@@ -60442,7 +60399,7 @@ var __decorate12 = function(decorators, target, key, desc) {
   else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
   return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata5 = function(k, v) {
+var __metadata4 = function(k, v) {
   if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var __param = function(paramIndex, decorator) {
@@ -60569,7 +60526,7 @@ var ProductsDb = ProductsDb_1 = class ProductsDb2 extends Products {
 ProductsDb = ProductsDb_1 = __decorate12([
   (0, import_inversify9.injectable)(),
   __param(0, (0, import_inversify9.inject)(Database.ID)),
-  __metadata5("design:paramtypes", [Database])
+  __metadata4("design:paramtypes", [Database])
 ], ProductsDb);
 var dbPlanSmall = {
   id: 11,
@@ -60641,17 +60598,13 @@ var __decorate13 = function(decorators, target, key, desc) {
   else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
   return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata6 = function(k, v) {
-  if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 var InvalidDateRange = class InvalidDateRange2 extends SimpleSerializableException {
-  constructor(msg) {
-    super(msg, { scope: "public" });
+  static create(msg) {
+    return new this(msg, { scope: "public" });
   }
 };
 InvalidDateRange = __decorate13([
-  registerError(),
-  __metadata6("design:paramtypes", [String])
+  registerError()
 ], InvalidDateRange);
 var LANDSCAPE_SERVICE = "Landscape Service";
 var IDE_PLAN = "IDE Plan";
@@ -60964,7 +60917,7 @@ var listAllIdeServersMissingStopEvent = async (db, { ideServerName }) => {
 
 // packages/stubs/node/lib/storage/database/squily/queries/workspace.js
 var fromDbNumber = (x) => {
-  const n = +(x !== null && x !== void 0 ? x : 0);
+  const n = +(x ?? 0);
   if (Number.isNaN(n)) {
     throw new TypeError(`Expected number, got ${x}`);
   }
@@ -61124,7 +61077,7 @@ var __decorate15 = function(decorators, target, key, desc) {
   else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
   return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata7 = function(k, v) {
+var __metadata5 = function(k, v) {
   if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var __param2 = function(paramIndex, decorator) {
@@ -61165,7 +61118,6 @@ var toWorkspaceDbEntry = toObject({
   managedServiceId: toUndefOr(toUuid)
 });
 var unsafeDbRecordToWorkspaceDbEntry = (r) => {
-  var _a, _b, _c, _d, _e;
   return {
     id: r.id,
     teamId: r.teamId,
@@ -61175,12 +61127,12 @@ var unsafeDbRecordToWorkspaceDbEntry = (r) => {
     userId: checkHas(r.userId),
     planId: checkHas(r.idePlanId),
     replicas: checkHas(r.replicas),
-    gitUrl: (_a = r.gitUrl) !== null && _a !== void 0 ? _a : null,
-    welcomeMessage: (_b = r.welcomeMessage) !== null && _b !== void 0 ? _b : null,
-    initialBranch: (_c = r.initialBranch) !== null && _c !== void 0 ? _c : null,
+    gitUrl: r.gitUrl ?? null,
+    welcomeMessage: r.welcomeMessage ?? null,
+    initialBranch: r.initialBranch ?? null,
     cloneDepth: r.cloneDepth,
-    sourceWorkspaceId: (_d = r.sourceWorkspaceId) !== null && _d !== void 0 ? _d : null,
-    vpnConfig: (_e = r.vpnConfig) !== null && _e !== void 0 ? _e : null,
+    sourceWorkspaceId: r.sourceWorkspaceId ?? null,
+    vpnConfig: r.vpnConfig ?? null,
     restricted: r.restricted,
     baseImage: r.baseImage,
     collectTraces: r.collectTraces,
@@ -61206,14 +61158,13 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
   }
   async subscribe(teamId, listener) {
     const l = (update) => {
-      var _a, _b, _c, _d, _e;
       const w = update ? {
         ...update,
-        gitUrl: (_a = update.gitUrl) !== null && _a !== void 0 ? _a : null,
-        welcomeMessage: (_b = update.welcomeMessage) !== null && _b !== void 0 ? _b : null,
-        initialBranch: (_c = update.initialBranch) !== null && _c !== void 0 ? _c : null,
-        sourceWorkspaceId: (_d = update.sourceWorkspaceId) !== null && _d !== void 0 ? _d : null,
-        vpnConfig: (_e = update.vpnConfig) !== null && _e !== void 0 ? _e : null
+        gitUrl: update.gitUrl ?? null,
+        welcomeMessage: update.welcomeMessage ?? null,
+        initialBranch: update.initialBranch ?? null,
+        sourceWorkspaceId: update.sourceWorkspaceId ?? null,
+        vpnConfig: update.vpnConfig ?? null
       } : update;
       listener(w);
     };
@@ -61232,12 +61183,12 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         replicas,
         dataCenterId,
         idePlanId: planId,
-        gitUrl: gitUrl !== null && gitUrl !== void 0 ? gitUrl : void 0,
-        welcomeMessage: welcomeMessage !== null && welcomeMessage !== void 0 ? welcomeMessage : void 0,
-        initialBranch: initialBranch !== null && initialBranch !== void 0 ? initialBranch : void 0,
+        gitUrl: gitUrl ?? void 0,
+        welcomeMessage: welcomeMessage ?? void 0,
+        initialBranch: initialBranch ?? void 0,
         cloneDepth,
-        sourceWorkspaceId: sourceWorkspaceId !== null && sourceWorkspaceId !== void 0 ? sourceWorkspaceId : void 0,
-        vpnConfig: vpnConfig !== null && vpnConfig !== void 0 ? vpnConfig : void 0,
+        sourceWorkspaceId: sourceWorkspaceId ?? void 0,
+        vpnConfig: vpnConfig ?? void 0,
         restricted,
         baseImage: baseImage2,
         managedServiceId
@@ -61262,9 +61213,9 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         dataCenterId,
         wsOwnerUserId: ownerUserId,
         wsOwnerUserEmail: ownerUserEmail,
-        sourceWorkspaceId: sourceWorkspaceId !== null && sourceWorkspaceId !== void 0 ? sourceWorkspaceId : void 0,
-        initialRepoUrl: gitUrl !== null && gitUrl !== void 0 ? gitUrl : void 0,
-        initialBranch: initialBranch !== null && initialBranch !== void 0 ? initialBranch : void 0,
+        sourceWorkspaceId: sourceWorkspaceId ?? void 0,
+        initialRepoUrl: gitUrl ?? void 0,
+        initialBranch: initialBranch ?? void 0,
         baseImage: baseImage2
       });
       await this.startIdeServerUsage({
@@ -61384,17 +61335,14 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
   }
   async doUpdate({ id, initiatorUserId, initiatorUserEmail, update }) {
     await this.db.transaction(async (tx) => {
-      await rethrowAsync(() => {
-        var _a, _b, _c, _d;
-        return tx.update("workspaceService.workspaces", {
-          ...void 0 !== update.name ? { name: update.name } : {},
-          ...void 0 !== update.planId ? { idePlanId: (_a = update.planId) !== null && _a !== void 0 ? _a : void 0 } : {},
-          ...void 0 !== update.replicas ? { replicas: (_b = update.replicas) !== null && _b !== void 0 ? _b : void 0 } : {},
-          ...void 0 !== update.vpnConfig ? { vpnConfig: (_c = update.vpnConfig) !== null && _c !== void 0 ? _c : void 0 } : {},
-          ...void 0 !== update.restricted ? { restricted: (_d = update.restricted) !== null && _d !== void 0 ? _d : void 0 } : {},
-          ...void 0 !== update.baseImage ? { baseImage: update.baseImage } : {}
-        }, { id });
-      }, [
+      await rethrowAsync(() => tx.update("workspaceService.workspaces", {
+        ...void 0 !== update.name ? { name: update.name } : {},
+        ...void 0 !== update.planId ? { idePlanId: update.planId ?? void 0 } : {},
+        ...void 0 !== update.replicas ? { replicas: update.replicas ?? void 0 } : {},
+        ...void 0 !== update.vpnConfig ? { vpnConfig: update.vpnConfig ?? void 0 } : {},
+        ...void 0 !== update.restricted ? { restricted: update.restricted ?? void 0 } : {},
+        ...void 0 !== update.baseImage ? { baseImage: update.baseImage } : {}
+      }, { id }), [
         DbForeignKeyViolation,
         (m) => {
           logE(`Failed to update workspace db entry ${id}: ${m}`);
@@ -61411,7 +61359,6 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
     return;
   }
   async updateUsageHistory({ id, initiatorUserId, initiatorUserEmail, update }, tx) {
-    var _a, _b, _c;
     const updateDate = /* @__PURE__ */ new Date();
     const { teamId, name, dataCenterId, userId, sourceWorkspaceId, gitUrl, initialBranch, planId, replicas, collectTraces } = await this.get(id, tx);
     const userEmail = await ignoreErrorAsync(() => this.getUserEmail(userId, tx), [NotFound]);
@@ -61427,13 +61374,13 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         beginDate: updateDate,
         initiatorUserId,
         initiatorUserEmail,
-        planId: (_a = update.planId) !== null && _a !== void 0 ? _a : planId,
-        replicas: (_b = update.replicas) !== null && _b !== void 0 ? _b : replicas,
+        planId: update.planId ?? planId,
+        replicas: update.replicas ?? replicas,
         workspaceId: id,
         workspaceName: name,
         dataCenterId,
         ownerUserId: userId,
-        ownerUserEmail: userEmail !== null && userEmail !== void 0 ? userEmail : ""
+        ownerUserEmail: userEmail ?? ""
       }, tx);
     }
     if (!update.name) {
@@ -61450,14 +61397,14 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
       beginInitiatorId: `${initiatorUserId}`,
       beginInitiatorEmail: initiatorUserEmail,
       workspaceId: id,
-      workspaceName: (_c = update.name) !== null && _c !== void 0 ? _c : name,
+      workspaceName: update.name ?? name,
       dataCenterId,
       wsOwnerUserId: userId,
-      wsOwnerUserEmail: userEmail !== null && userEmail !== void 0 ? userEmail : "",
-      sourceWorkspaceId: sourceWorkspaceId !== null && sourceWorkspaceId !== void 0 ? sourceWorkspaceId : void 0,
-      initialRepoUrl: gitUrl !== null && gitUrl !== void 0 ? gitUrl : void 0,
-      initialBranch: initialBranch !== null && initialBranch !== void 0 ? initialBranch : void 0,
-      collectTraces: collectTraces !== null && collectTraces !== void 0 ? collectTraces : false
+      wsOwnerUserEmail: userEmail ?? "",
+      sourceWorkspaceId: sourceWorkspaceId ?? void 0,
+      initialRepoUrl: gitUrl ?? void 0,
+      initialBranch: initialBranch ?? void 0,
+      collectTraces: collectTraces ?? false
     });
   }
   async delete({ workspaceId, initiatorUserId, initiatorUserEmail }) {
@@ -61506,7 +61453,7 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
       return cached2;
     }
     const plan = await this.db.selectOne("paymentservice.workspacePlans", ["maxReplicas"], { productId: planId });
-    if (void 0 === (plan === null || plan === void 0 ? void 0 : plan.maxReplicas)) {
+    if (void 0 === plan?.maxReplicas) {
       throw new NotFound(`Plan ${planId} not found.`);
     }
     this.replicaLimitsCache.set(planId, plan.maxReplicas);
@@ -61545,24 +61492,21 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         "createdAt"
       ],
       []
-    ], [NO_CONDITION, { workspaceId: void 0 }])).map((w) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h;
-      return toWorkspace({
-        ...w,
-        userId: checkHas(w.userId),
-        planId: checkHas(w.idePlanId),
-        replicas: checkHas(w.replicas),
-        gitUrl: (_a = w.gitUrl) !== null && _a !== void 0 ? _a : null,
-        welcomeMessage: (_b = w.welcomeMessage) !== null && _b !== void 0 ? _b : null,
-        initialBranch: (_c = w.initialBranch) !== null && _c !== void 0 ? _c : null,
-        sourceWorkspaceId: (_d = w.sourceWorkspaceId) !== null && _d !== void 0 ? _d : null,
-        vpnConfig: (_e = w.vpnConfig) !== null && _e !== void 0 ? _e : null,
-        restricted: (_f = w.restricted) !== null && _f !== void 0 ? _f : true,
-        collectTraces: (_g = w.collectTraces) !== null && _g !== void 0 ? _g : false,
-        persistentLogs: (_h = w.persistentLogs) !== null && _h !== void 0 ? _h : false,
-        createdAt: w.createdAt
-      });
-    });
+    ], [NO_CONDITION, { workspaceId: void 0 }])).map((w) => toWorkspace({
+      ...w,
+      userId: checkHas(w.userId),
+      planId: checkHas(w.idePlanId),
+      replicas: checkHas(w.replicas),
+      gitUrl: w.gitUrl ?? null,
+      welcomeMessage: w.welcomeMessage ?? null,
+      initialBranch: w.initialBranch ?? null,
+      sourceWorkspaceId: w.sourceWorkspaceId ?? null,
+      vpnConfig: w.vpnConfig ?? null,
+      restricted: w.restricted ?? true,
+      collectTraces: w.collectTraces ?? false,
+      persistentLogs: w.persistentLogs ?? false,
+      createdAt: w.createdAt
+    }));
   }
   async listAllWorkspacesMissingStopEvent() {
     return (await this.db.selectMany({
@@ -61576,7 +61520,6 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
   async startUsagesMissingStart(workspaces) {
     await this.db.transaction(async (tx) => {
       const dbParams = await mapAsync(workspaces, async (w) => {
-        var _a, _b, _c;
         const email = await ignoreErrorAsync(() => this.getUserEmail(w.userId, tx));
         return {
           teamId: w.teamId,
@@ -61586,10 +61529,10 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
           workspaceName: w.name,
           dataCenterId: w.dataCenterId,
           wsOwnerUserId: w.userId,
-          wsOwnerUserEmail: email !== null && email !== void 0 ? email : "",
-          sourceWorkspaceId: (_a = w.sourceWorkspaceId) !== null && _a !== void 0 ? _a : void 0,
-          initialRepoUrl: (_b = w.gitUrl) !== null && _b !== void 0 ? _b : void 0,
-          initialBranch: (_c = w.initialBranch) !== null && _c !== void 0 ? _c : void 0,
+          wsOwnerUserEmail: email ?? "",
+          sourceWorkspaceId: w.sourceWorkspaceId ?? void 0,
+          initialRepoUrl: w.gitUrl ?? void 0,
+          initialBranch: w.initialBranch ?? void 0,
           baseImage: w.baseImage,
           collectTraces: w.collectTraces
         };
@@ -61652,7 +61595,7 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
           pricePeriod: "monthly",
           dataCenterId: s.dataCenterId,
           serverOwnerUserId: s.ownerUserId,
-          serverOwnerUserEmail: email !== null && email !== void 0 ? email : ""
+          serverOwnerUserEmail: email ?? ""
         };
       });
       await tx.insert("workspaceService.serverUsage", dbParams.filter(has));
@@ -61737,7 +61680,7 @@ WorkspacesDAODatabase = __decorate15([
   __param2(0, (0, import_inversify11.inject)(serviceId("Workspace"))),
   __param2(1, (0, import_inversify11.inject)(Database.ID)),
   __param2(2, (0, import_inversify11.inject)(getWorkspacePlanId)),
-  __metadata7("design:paramtypes", [Object, Database, Function])
+  __metadata5("design:paramtypes", [Object, Database, Function])
 ], WorkspacesDAODatabase);
 
 // packages/script-lib/lib/codesphere.js
@@ -61814,7 +61757,7 @@ var createWorkspaceIfNotExist = async (workspaces, { teamId, planId, workspaceNa
         welcomeMessage: null,
         replicas: 1,
         sourceWorkspaceId: null,
-        vpnConfig: vpnConfig !== null && vpnConfig !== void 0 ? vpnConfig : null,
+        vpnConfig: vpnConfig ?? null,
         restricted,
         baseImage: baseImage2,
         env: envVars
@@ -61904,7 +61847,6 @@ var runPipelineStage = async (stage, targetState, pipeline, workspaceId, { proce
 };
 var waitForPipelineState = (pipeline, workspaceId, stage, targetState) => {
   const close = restreamOnError(() => pipeline.executionInfo(), async (s) => {
-    var _a;
     await s.send({ workspaceId, stage });
     while (true) {
       const info = await s.recv();
@@ -61918,10 +61860,10 @@ var waitForPipelineState = (pipeline, workspaceId, stage, targetState) => {
       if ("success" === targetState && info.state === targetState) {
         return;
       }
-      if ("running" === targetState && (step === null || step === void 0 ? void 0 : step.index) === info.steps.length - 1 && (step === null || step === void 0 ? void 0 : step.state) === targetState) {
+      if ("running" === targetState && step?.index === info.steps.length - 1 && step?.state === targetState) {
         return;
       }
-      logD(`Waiting for stage "${stage}" to finish. Stage is at step ${(_a = step === null || step === void 0 ? void 0 : step.index) !== null && _a !== void 0 ? _a : 0} in state: ${info.state}.`);
+      logD(`Waiting for stage "${stage}" to finish. Stage is at step ${step?.index ?? 0} in state: ${info.state}.`);
     }
   });
   const done = (async () => {
@@ -61996,9 +61938,7 @@ var ServiceStubManager = class _ServiceStubManager {
     await allLogRejected(Object.values(this.providers).map(async (p) => await (await p.provider).disconnect()));
   }
   async acquire(serviceName) {
-    var _a;
-    var _b;
-    const p = (_a = (_b = this.providers)[serviceName]) !== null && _a !== void 0 ? _a : _b[serviceName] = {
+    const p = this.providers[serviceName] ??= {
       refs: 0,
       provider: this.createStubProvider(() => this.release(serviceName), this.resolveAddress(serviceName))
     };
@@ -62048,8 +61988,7 @@ var SingleStubProvider = class _SingleStubProvider {
     return this.isOpen;
   }
   async disconnect() {
-    var _a;
-    await ((_a = await this.stub) === null || _a === void 0 ? void 0 : _a.close());
+    await (await this.stub)?.close();
   }
   async setContext(context3) {
     if (this.contextUpdate) {
@@ -62126,12 +62065,12 @@ var SingleStubProvider = class _SingleStubProvider {
     if (i === tries) {
       throw new TemporarilyUnavailable(`stub changed underneath us (${tries} times): ${this}`);
     }
-    if (s === null || s === void 0 ? void 0 : s.isAlive) {
+    if (s?.isAlive) {
       return s;
     }
     const newS = this.stub = this.createStubWithContext(this.context);
     try {
-      await (s === null || s === void 0 ? void 0 : s.close());
+      await s?.close();
     } catch (e) {
       logW(`failed while closing stub (${s}) in ${this}: ${e}`);
     }
@@ -62144,12 +62083,11 @@ var SingleStubProvider = class _SingleStubProvider {
     return await this.getStub();
   }
   async close() {
-    var _a;
     if (!this.isOpen) {
       throw new InvalidOperation2(`attempting to close a StubProvider multiple times: ${this}`);
     }
     this.isOpen = false;
-    await ((_a = await this.stub) === null || _a === void 0 ? void 0 : _a.close());
+    await (await this.stub)?.close();
   }
   throwIfClosed() {
     if (!this.isOpen) {
@@ -62663,9 +62601,6 @@ var __decorate18 = function(decorators, target, key, desc) {
   else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
   return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __metadata8 = function(k, v) {
-  if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
 var ProcessExecutionFailed_1;
 var toArgValue = toOr(toNull, toBoolean, toString, toNumber);
 var toOptions = toRecord(toOr(toArgValue, toArray(toArgValue)));
@@ -62694,22 +62629,14 @@ var ProcessExecutionFailed = ProcessExecutionFailed_1 = class ProcessExecutionFa
   static create(exitCode, message, error, output) {
     return new ProcessExecutionFailed_1(message + `, Exit Code: ${exitCode}, Output: ${output}, Error: ${error}`);
   }
-  constructor(message) {
-    super(message);
-  }
 };
 ProcessExecutionFailed = ProcessExecutionFailed_1 = __decorate18([
-  registerError(),
-  __metadata8("design:paramtypes", [String])
+  registerError()
 ], ProcessExecutionFailed);
 var ProcessTimedOut = class ProcessTimedOut2 extends SimpleSerializableException {
-  constructor(message) {
-    super(message);
-  }
 };
 ProcessTimedOut = __decorate18([
-  registerError(),
-  __metadata8("design:paramtypes", [String])
+  registerError()
 ], ProcessTimedOut);
 var processService = {
   name: "Process",
@@ -62816,13 +62743,12 @@ var SUPPORTED_FORMATS = [
   "hostname"
 ];
 var compile = (schema, options) => {
-  var _a, _b;
   const ajv = new import_ajv.Ajv({
     allErrors: true,
     strict: false,
     useDefaults: true,
-    removeAdditional: (_a = options === null || options === void 0 ? void 0 : options.removeAdditional) !== null && _a !== void 0 ? _a : false,
-    coerceTypes: (_b = options === null || options === void 0 ? void 0 : options.coerceTypes) !== null && _b !== void 0 ? _b : false
+    removeAdditional: options?.removeAdditional ?? false,
+    coerceTypes: options?.coerceTypes ?? false
   });
   addFormats(ajv, [...SUPPORTED_FORMATS]);
   const validate = ajv.compile(schema);
@@ -63086,6 +63012,11 @@ var managedServicesService = {
       request: toCreateLandscapeProviderByGitArgs,
       response: toManagedServiceLandscapeProvider
     }),
+    serviceStream: stream({
+      access: "public",
+      request: toTeamServiceArgs,
+      response: toArray(toManagedService)
+    }),
     listEvents: rpc({
       access: "public",
       request: toListEventsArgs,
@@ -63214,23 +63145,22 @@ var logStatusReporter = () => ({
   setPending: async () => logI("Deployment pending."),
   setStarted: async () => logI("Deployment started."),
   setFailed: async () => logE("Deployment failed."),
-  setDeployed: async (environmentUrl, msg) => logI(`Deployment successful. ${msg !== null && msg !== void 0 ? msg : ""} ${environmentUrl}`),
+  setDeployed: async (environmentUrl, msg) => logI(`Deployment successful. ${msg ?? ""} ${environmentUrl}`),
   setInactive: async () => logI("Deployment inactive."),
   delete: async () => logI("Deployment deleted."),
   setWorkspace: async (w) => {
   }
 });
 var planIdByConfig = async (products, planTitle, onDemand = false) => {
-  var _a, _b;
   const availablePlans = (await products.listHostingPlans()).filter((p) => !p.deprecated);
-  const planIdByName = (_a = availablePlans.find((p) => p.title === planTitle && p.characteristics.onDemand === onDemand)) === null || _a === void 0 ? void 0 : _a.id;
+  const planIdByName = availablePlans.find((p) => p.title === planTitle && p.characteristics.onDemand === onDemand)?.id;
   if (has(planTitle) && !has(planIdByName)) {
     throw new InvalidArgument3(`Unknown plan ${planTitle}. Available plans: ${availablePlans.filter((p) => !p.characteristics.onDemand).map((p) => p.title).join(", ")}`);
   }
   if (planIdByName) {
     return planIdByName;
   }
-  const defaultPlanId = (_b = availablePlans.find((p) => p.title === DEFAULT_PLAN_TITLE && !p.characteristics.onDemand)) === null || _b === void 0 ? void 0 : _b.id;
+  const defaultPlanId = availablePlans.find((p) => p.title === DEFAULT_PLAN_TITLE && !p.characteristics.onDemand)?.id;
   if (!defaultPlanId) {
     throw new InvalidArgument3(`Could not find default plan ${DEFAULT_PLAN_TITLE}. Available plans: ${availablePlans.filter((p) => !p.characteristics.onDemand).map((p) => p.title).join(", ")}`);
   }
@@ -63353,7 +63283,6 @@ var createDeployment = async (creds, team2, c, status, serviceUrlDc) => {
   try {
     await status.setStarted();
     await withStubs(team2.defaultDataCenterId, creds, serviceUrlDc, async ({ deployment, landscape, replica, pipeline, workspaces, products, process: process2, config, git }) => {
-      var _a;
       const useBootstrapRepo = !await isProviderSupported(c.repository, git);
       if (useBootstrapRepo) {
         logI("Using Bootstrap repository");
@@ -63365,7 +63294,7 @@ var createDeployment = async (creds, team2, c, status, serviceUrlDc) => {
         profile: c.profile,
         planId: await planIdByConfig(products, c.planTitle, c.onDemand),
         restricted: c.restricted,
-        workspaceName: (_a = c.workspaceName) !== null && _a !== void 0 ? _a : workspaceName(c.repository.name, c.pullRequest.number),
+        workspaceName: c.workspaceName ?? workspaceName(c.repository.name, c.pullRequest.number),
         gitUrl: useBootstrapRepo ? bootstrapRepoUrl : c.repository.url,
         isPrivateRepo: c.repository.private,
         initialBranch: useBootstrapRepo ? bootstrapRepoBranch : c.pullRequest.branch,
@@ -63426,9 +63355,8 @@ var run = async (config, status) => {
 
 // packages/integrations/lib/github-action-deploy-workspace.js
 var getConfig = async () => {
-  var _a, _b, _c, _d, _e, _f;
   const config = await fetchGitHubActionPrConfig();
-  const envVars = (0, import_dotenv.parse)((_a = getActionInput("env")) !== null && _a !== void 0 ? _a : "");
+  const envVars = (0, import_dotenv.parse)(getActionInput("env") ?? "");
   const cloneDepth = getActionInput("cloneDepth");
   return {
     ...config,
@@ -63436,16 +63364,16 @@ var getConfig = async () => {
       ...config.repository,
       url: gitHubUrl(config.repository)
     },
-    apiUrl: new URL((_b = getActionInput("apiUrl")) !== null && _b !== void 0 ? _b : "https://codesphere.com"),
+    apiUrl: new URL(getActionInput("apiUrl") ?? "https://codesphere.com"),
     teamName: getActionInput("team", true),
-    baseImage: (_c = getActionInput("baseImage")) !== null && _c !== void 0 ? _c : void 0,
-    profile: (_d = getActionInput("ciProfile")) !== null && _d !== void 0 ? _d : void 0,
-    planTitle: (_e = getActionInput("plan")) !== null && _e !== void 0 ? _e : void 0,
+    baseImage: getActionInput("baseImage") ?? void 0,
+    profile: getActionInput("ciProfile") ?? void 0,
+    planTitle: getActionInput("plan") ?? void 0,
     onDemand: "true" === getActionInput("onDemand"),
     restricted: "true" === getActionInput("restricted"),
     cloneDepth: cloneDepth ? Number(cloneDepth) : void 0,
     envVars,
-    vpnConfigName: (_f = getActionInput("vpnConfig")) !== null && _f !== void 0 ? _f : void 0,
+    vpnConfigName: getActionInput("vpnConfig") ?? void 0,
     authentication: {
       email: getActionInput("email", true),
       password: getActionInput("password", true)
