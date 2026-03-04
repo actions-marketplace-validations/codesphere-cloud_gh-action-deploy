@@ -54432,24 +54432,6 @@ var wait = (duration2) => {
 };
 
 // packages/utils/common/lib/promise.js
-var allLogRejected = async (promises) => {
-  const [succeeded, rejected] = await allSplit(promises);
-  rejected.forEach((res) => logW(res));
-  return succeeded;
-};
-var allRejected = async (promises) => {
-  const results = await Promise.allSettled(promises);
-  return results.filter((res) => res.status === "rejected").map((res) => res.reason);
-};
-var allResolved = async (promises) => {
-  const results = await Promise.allSettled(promises);
-  return results.filter((res) => res.status === "fulfilled").map((res) => res.value);
-};
-var allSplit = async (promises) => {
-  const rejected = await allRejected(promises);
-  const resolved = await allResolved(promises);
-  return [resolved, rejected];
-};
 var allThrowRejected = async (promises) => {
   const all = await Promise.allSettled(promises);
   const rejected = all.filter((r) => r.status === "rejected").map((r) => r.reason);
@@ -54532,6 +54514,9 @@ var getFirst = (array) => {
   return array[0];
 };
 var mapAsync = async (items, transform) => await allThrowRejected(items.map(transform));
+var forEachAsync = async (items, func) => {
+  await allThrowRejected(items.map(func));
+};
 function range(s, end) {
   const rawSize = Math.max(0, void 0 !== end ? end - s : s);
   const size2 = isFinite(rawSize) && !isNaN(rawSize) ? rawSize : 0;
@@ -55349,11 +55334,6 @@ var StreamClosed = class extends Exception {
     return this.id === stream2.id;
   }
 };
-var TemporarilyUnavailable = class extends RpcException {
-  constructor(message) {
-    super(message);
-  }
-};
 
 // packages/streamy/common/lib/protocol/client.js
 var import_fast_deep_equal = __toESM(require_fast_deep_equal(), 1);
@@ -55384,15 +55364,6 @@ var JsonSerializer = class {
   }
   encode(obj) {
     return JSON.stringify(obj);
-  }
-};
-
-// packages/streamy/common/lib/support/promise.js
-var rejectToNull = async (p) => {
-  try {
-    return await p;
-  } catch (e) {
-    return null;
   }
 };
 
@@ -56233,6 +56204,93 @@ var StreamyClient = class _StreamyClient {
   throwIfClosed() {
     if (!this.open) {
       throw new Closed("StreamyClient");
+    }
+  }
+};
+var ManagedStreamyClient = class extends StreamyClient {
+  constructor(provider, release) {
+    super(provider);
+    this.release = release;
+  }
+  toString() {
+    return `ManagedStreamyClient(${super.toString()})`;
+  }
+  async close() {
+    this.throwIfClosed();
+    this.open = false;
+    await this.release();
+  }
+};
+var StreamyClientManager = class {
+  constructor({ createTransport, resolveAddress, serializer = new JsonSerializer(), closeDelay, rpcOptions }) {
+    this.open = true;
+    this.providers = /* @__PURE__ */ new Map();
+    this.createTransport = createTransport;
+    this.resolveAddress = resolveAddress;
+    this.serializer = serializer;
+    this.closeDelay = closeDelay ? toDuration(closeDelay) : void 0;
+    this.rpcOptions = rpcOptions;
+  }
+  async acquire(serverName, { resolveAddress } = {}) {
+    this.throwIfClosed();
+    if (!this.providers.has(serverName)) {
+      this.providers.set(serverName, {
+        provider: new SharedSimpleStreamyClientProvider(serverName, this.createTransport, resolveAddress ?? this.resolveAddress, this.serializer, this.rpcOptions),
+        refs: 0
+      });
+    }
+    const c = this.providers.get(serverName);
+    c.refs++;
+    c.stopDeferredClose?.();
+    const { provider } = c;
+    return new ManagedStreamyClient(provider, async () => {
+      const p = this.providers.get(serverName);
+      if (!p) {
+        throw new Closed(`Provider for ${serverName} is already closed.`);
+      }
+      if (0 === --p.refs) {
+        if (!this.closeDelay) {
+          this.providers.delete(serverName);
+          await p.provider.close();
+          return;
+        }
+        const iw = interruptableWait(this.closeDelay);
+        const deferredCloseDone = logErrorAsync(async () => {
+          try {
+            await iw;
+          } catch (e) {
+            logD(`Stop closing of ${serverName}`, { cause: e });
+            return;
+          }
+          if (0 !== p.refs) {
+            logD(`Provider re-acquired. Stop closing of ${serverName}`);
+            return;
+          }
+          this.providers.delete(serverName);
+          await p.provider.close();
+        });
+        p.stopDeferredClose = () => iw.interrupt();
+        p.skipDeferredCloseDelay = async () => {
+          iw.finish();
+          await deferredCloseDone;
+        };
+      }
+    });
+  }
+  async closeAll({ force = false } = {}) {
+    this.throwIfClosed();
+    this.open = false;
+    await forEachAsync(Array.from(this.providers.entries()), async ([serverName, { provider, skipDeferredCloseDelay, refs }]) => {
+      await provider.close();
+      await skipDeferredCloseDelay?.();
+      if (!force && refs > 0) {
+        throw new InvalidState(`${refs} Providers for "${serverName}" not released, cannot close manager (forgot to close stub/release provider?)`);
+      }
+    });
+  }
+  throwIfClosed() {
+    if (!this.open) {
+      throw new Closed("StreamyClientManager already closed");
     }
   }
 };
@@ -57458,7 +57516,8 @@ var toStage = toObject({
   healthEndpoint: toUndefOr(toUrl),
   customImageOpts: toUndefOr(toCustomImageOpts)
 });
-var toEnv = toRecord(toString);
+var toEnvValue = toOr(toString, toNumber);
+var toEnv = toRecord(toEnvValue);
 var toSimpleNetworkConfig = toObject({
   path: toUrlPath,
   stripPath: toUndefOr(toBoolean)
@@ -57494,6 +57553,7 @@ var toDeployStageServerFields = {
   customImageOpts: toUndefOr(toCustomImageOpts)
 };
 var toDeployStageServer = toObject(toDeployStageServerFields);
+var isDeployStageServer = (x) => isOfType(x, toDeployStageServer);
 var toManagedServiceConfigFields = {
   provider: toObject({
     name: toString,
@@ -57507,8 +57567,16 @@ var toManagedServiceConfigFields = {
   secrets: toRecord(toUnknown)
 };
 var toManagedServiceConfig = toObject(toManagedServiceConfigFields);
-var isManagedServiceConfig = (x) => isOfType(x, toManagedServiceConfig);
-var toDeployStage = toRecord(toOr(toDeployStageServer, toManagedServiceConfig));
+var toHeadlessServiceConfig = toObject({
+  network: toObject({
+    paths: toArray(toObject({
+      path: toUrlPath,
+      stripPath: toBoolean,
+      target: toString
+    }))
+  })
+});
+var toDeployStage = toRecord(toOr(toDeployStageServer, toManagedServiceConfig, toHeadlessServiceConfig));
 var isDeployStage = (x) => isOfType(x, toDeployStage);
 var toPipelineConfigV01 = toObject({
   prepare: toStage,
@@ -57644,7 +57712,7 @@ var advancedNetworkToServerNetwork = (networkConfig) => ({
 });
 var configToLandscape = (config) => {
   return Object.entries(config).map(([k, v]) => {
-    if (isManagedServiceConfig(v)) {
+    if (!isDeployStageServer(v)) {
       return;
     }
     return deployStageServerToLandscape(k, v);
@@ -59070,11 +59138,6 @@ var legacyAuthService = {
   name: "AuthLegacy",
   context: toHttpContext,
   methods: {
-    confirmEmail: rpc({
-      access: "public",
-      request: toConfirmEmailArgs,
-      response: toEmailContainer
-    }),
     confirmEmailUpdate: rpc({
       access: "public",
       request: toConfirmEmailArgs,
@@ -59999,9 +60062,25 @@ var SqlLimit = class extends SqlPartWithValue {
     return this.limit;
   }
 };
+var SqlOrderBy = class extends SqlPartWithValue {
+  constructor(column, direction) {
+    super();
+    this.column = column;
+    this.direction = direction;
+  }
+  toSql(dialect) {
+    return `ORDER BY ${this.column.toSql()} ${this.direction}`;
+  }
+  getVal() {
+    return [];
+  }
+};
 var SqlRefinement = class _SqlRefinement extends SqlPartWithValue {
   static from(refinement, paramIndex) {
     const refinements = [];
+    if (refinement.orderBy !== void 0) {
+      refinements.push(new SqlOrderBy(refinement.orderBy.column, refinement.orderBy.direction));
+    }
     if (refinement.limit !== void 0) {
       refinements.push(new SqlLimit(refinement.limit, paramIndex));
     }
@@ -60133,6 +60212,29 @@ var DatabaseImpl = class {
     this.dialect = dialect;
     this.dbSpec = dbSpec;
     this.transformer = transformer;
+    this.buildRefinement = (refinement, tableOrJoin, paramIndexGenerator) => SqlRefinement.from({
+      ...refinement,
+      orderBy: refinement.orderBy ? {
+        column: SqlColumn.forTable(tableOrJoin, refinement.orderBy.columnName, this.dbSpec, this.transformer),
+        direction: refinement.orderBy.direction
+      } : void 0
+    }, paramIndexGenerator);
+    this.buildRefinementForJoin = (refinement, tableLeft, tableRight, paramIndexGenerator) => SqlRefinement.from({
+      ...refinement,
+      orderBy: refinement.orderBy ? {
+        column: (() => {
+          const c = refinement.orderBy.columnName;
+          if (this.dbSpec[tableLeft.name].includes(c)) {
+            return SqlColumn.forTable(tableLeft, c, this.dbSpec, this.transformer);
+          }
+          if (this.dbSpec[tableRight.name].includes(c)) {
+            return SqlColumn.forTable(tableRight, c, this.dbSpec, this.transformer);
+          }
+          throw new UnknownDbEntity(`Unknown column: ${c} for joined tables: ${tableLeft.name}, ${tableRight.name}`);
+        })(),
+        direction: refinement.orderBy.direction
+      } : void 0
+    }, paramIndexGenerator);
   }
   maybeSqlCondition(table, condition, paramIndexGenerator) {
     return "ALL_ROWS" === condition ? void 0 : SqlCondition.forTable(table, condition, paramIndexGenerator, this.dbSpec, this.transformer);
@@ -60161,7 +60263,7 @@ var DatabaseImpl = class {
       ].join(""));
     }
     const paramIndexGenerator = createParamIndexGenerator();
-    const r = await this.dialect.selectMany(SqlTable.create(tableOrJoin, this.dbSpec, this.transformer), "ALL_COLUMNS_DISCOURAGED" === columns ? new AllColumns() : SqlColumns.forTable(tableOrJoin, columns, this.dbSpec, this.transformer), this.maybeSqlCondition(tableOrJoin, condition, paramIndexGenerator), refinement ? SqlRefinement.from(refinement, paramIndexGenerator) : void 0);
+    const r = await this.dialect.selectMany(SqlTable.create(tableOrJoin, this.dbSpec, this.transformer), "ALL_COLUMNS_DISCOURAGED" === columns ? new AllColumns() : SqlColumns.forTable(tableOrJoin, columns, this.dbSpec, this.transformer), this.maybeSqlCondition(tableOrJoin, condition, paramIndexGenerator), refinement ? this.buildRefinement(refinement, tableOrJoin, paramIndexGenerator) : void 0);
     return r.rows;
   }
   async selectManyLeftJoin(join2, columns, condition, refinement) {
@@ -60184,7 +60286,7 @@ var DatabaseImpl = class {
     ], this.dbSpec, this.transformer), condEmpty ? void 0 : new SqlConditionForJoin([
       SqlCondition.forTable(tableLeft, condition[0], paramIndexGenerator, this.dbSpec, this.transformer),
       SqlCondition.forTable(tableRight, condition[1], paramIndexGenerator, this.dbSpec, this.transformer)
-    ]), refinement ? SqlRefinement.from(refinement, paramIndexGenerator) : void 0);
+    ]), refinement ? this.buildRefinementForJoin(refinement, tableLeft, tableRight, paramIndexGenerator) : void 0);
     return r.rows;
   }
   async insert(table, values) {
@@ -60612,13 +60714,15 @@ var WORKSPACE = "Workspace";
 var DATABASE = "Database";
 var DOCKER_DEPLOYMENT = "Docker Deployment";
 var SEATS = "Seats";
+var MANAGED_SERVICE = "Managed Service";
 var allResourceTypes = [
   LANDSCAPE_SERVICE,
   IDE_PLAN,
   WORKSPACE,
   DATABASE,
   DOCKER_DEPLOYMENT,
-  SEATS
+  SEATS,
+  MANAGED_SERVICE
 ];
 var toResourceType = toLiteralUnion("resourceType", allResourceTypes);
 var SortingOption;
@@ -60661,6 +60765,10 @@ var toDatabaseUsageParams = toObject({
 var toDockerDeploymentUsageParams = toObject({
   ...baseUsageParams,
   deploymentId: toString
+});
+var toManagedServiceUsageParams = toObject({
+  ...baseUsageParams,
+  managedServiceId: toString
 });
 var baseEventData = {
   initiatorId: toString,
@@ -60747,6 +60855,33 @@ var toPaginatedDeploymentUsageEvents = toObject({
   limit: toPositiveInteger,
   offset: toNonNegativeInteger
 });
+var baseManagedServiceData = {
+  managedServiceId: toString,
+  managedServiceName: toString,
+  state: toUndefOr(toString),
+  provider: toString,
+  providerVersion: toString,
+  planId: toNonNegativeInteger,
+  planName: toString,
+  planParameters: toUndefOr(toRecord(toUnknown))
+};
+var toManagedServiceUsageStartEvent = toObject({
+  ...baseEventData,
+  ...baseManagedServiceData,
+  beginDate: toDate
+});
+var toManagedServiceUsageEndEvent = toObject({
+  ...baseEventData,
+  ...baseManagedServiceData,
+  endDate: toDate
+});
+var toManagedServiceUsageEvent = toOr(toManagedServiceUsageStartEvent, toManagedServiceUsageEndEvent);
+var toPaginatedManagedServiceUsageEvents = toObject({
+  events: toArray(toManagedServiceUsageEvent),
+  totalItems: toInteger,
+  limit: toPositiveInteger,
+  offset: toNonNegativeInteger
+});
 var baseSeatData = {
   seats: toNonNegativeInteger
 };
@@ -60827,7 +60962,12 @@ var toSeatsUsageSummary = toObject({
   type: toLiteral(SEATS),
   plan: toString
 });
-var toUsageSummary = toArray(toOr(toServerUsageSummary, toWorkspaceUsageSummary, toDatabaseUsageSummary, toDeploymentsUsageSummary, toSeatsUsageSummary));
+var toManagedServiceUsageSummary = toObject({
+  ...baseUsageSummary,
+  type: toLiteral(MANAGED_SERVICE),
+  plan: toString
+});
+var toUsageSummary = toArray(toOr(toServerUsageSummary, toWorkspaceUsageSummary, toDatabaseUsageSummary, toDeploymentsUsageSummary, toSeatsUsageSummary, toManagedServiceUsageSummary));
 var toPaginatedUsageSummary = toObject({
   summary: toUsageSummary,
   totalItems: toInteger,
@@ -60862,6 +61002,11 @@ var usageService = {
       access: "public",
       request: toUsageParams,
       response: toPaginatedSeatUsageEvents
+    }),
+    listManagedServiceEvents: rpc({
+      access: "public",
+      request: toManagedServiceUsageParams,
+      response: toPaginatedManagedServiceUsageEvents
     }),
     listSummaryOfTeam: rpc({
       access: "public",
@@ -61923,239 +62068,6 @@ var waitForWorkspaceStatus = async (replicaStub, workspaceId, fulfillsCondition)
   }
 };
 
-// packages/streamy/common/lib/stub.js
-var import_fast_deep_equal2 = __toESM(require_fast_deep_equal(), 1);
-var ServiceStubManager = class _ServiceStubManager {
-  static async create(createStubProvider, resolveAddress) {
-    return new _ServiceStubManager(createStubProvider, resolveAddress);
-  }
-  constructor(createStubProvider, resolveAddress) {
-    this.createStubProvider = createStubProvider;
-    this.resolveAddress = resolveAddress;
-    this.providers = {};
-  }
-  async disconnectAll() {
-    await allLogRejected(Object.values(this.providers).map(async (p) => await (await p.provider).disconnect()));
-  }
-  async acquire(serviceName) {
-    const p = this.providers[serviceName] ??= {
-      refs: 0,
-      provider: this.createStubProvider(() => this.release(serviceName), this.resolveAddress(serviceName))
-    };
-    p.refs++;
-    try {
-      return await p.provider;
-    } catch (e) {
-      if (0 === --p.refs) {
-        delete this.providers[serviceName];
-      }
-      throw e;
-    }
-  }
-  async release(serviceName) {
-    const p = this.providers[serviceName];
-    if (!p) {
-      throw new NotFound(`tried to release an unmanaged (already closed?) stub, service: ${serviceName}`);
-    }
-    if (0 !== --p.refs) {
-      return;
-    }
-    delete this.providers[serviceName];
-    await (await p.provider).close();
-  }
-};
-var SingleStubProvider = class _SingleStubProvider {
-  static factory(createStub) {
-    return (release, resolver) => {
-      return _SingleStubProvider.create(createStub, release, resolver);
-    };
-  }
-  static async create(createStub, release, resolver) {
-    return new _SingleStubProvider(createStub, release, resolver);
-  }
-  constructor(createStub, release, resolver) {
-    this.createStub = createStub;
-    this.release = release;
-    this.resolver = resolver;
-    this.lazyConnect = false;
-    this.stub = Promise.resolve(null);
-    this.isOpen = true;
-  }
-  toString() {
-    return `SingleStubProvider(lastAddress=${this.lastAddress})`;
-  }
-  get isAlive() {
-    return this.isOpen;
-  }
-  async disconnect() {
-    await (await this.stub)?.close();
-  }
-  async setContext(context3) {
-    if (this.contextUpdate) {
-      throw new InvalidOperation2(`setContext() in progress: ${this}`);
-    }
-    this.contextUpdate = (async () => {
-      const origS = this.stub;
-      const upStub = this.stub = awaitLater(resolvablePromise());
-      const s = await rejectToNull(origS);
-      if (s && (0, import_fast_deep_equal2.default)(this.context, context3)) {
-        upStub.resolve(s);
-        return;
-      }
-      try {
-        if (s && s.isAlive) {
-          await s.setContext(context3);
-          upStub.resolve(s);
-        } else if (this.lazyConnect) {
-          upStub.resolve(null);
-        } else {
-          upStub.resolve(await this.createStubWithContext(context3));
-        }
-        this.context = context3;
-      } catch (e) {
-        upStub.reject(toError(e));
-        throw e;
-      }
-    })();
-    try {
-      await this.contextUpdate;
-    } finally {
-      this.contextUpdate = void 0;
-    }
-  }
-  async doCreateStub() {
-    const addr = await this.resolver();
-    this.lastAddress = addr;
-    return await this.createStub(addr);
-  }
-  async createStubWithContext(context3) {
-    const s = await this.doCreateStub();
-    if (context3) {
-      try {
-        await s.setContext(context3);
-      } catch (e) {
-        try {
-          await s.close();
-        } catch (cause) {
-          logW(`failed to close after setContext failed: ${this}`, {
-            cause
-          });
-        }
-        throw e;
-      }
-    }
-    return s;
-  }
-  async getStub() {
-    let s = null;
-    const tries = 3;
-    let i = 0;
-    for (i = 0; i < tries; i++) {
-      const origS = this.stub;
-      s = await rejectToNull(this.stub);
-      while (this.contextUpdate) {
-        await this.contextUpdate;
-      }
-      this.throwIfClosed();
-      if (origS === this.stub) {
-        break;
-      }
-      s = null;
-    }
-    if (i === tries) {
-      throw new TemporarilyUnavailable(`stub changed underneath us (${tries} times): ${this}`);
-    }
-    if (s?.isAlive) {
-      return s;
-    }
-    const newS = this.stub = this.createStubWithContext(this.context);
-    try {
-      await s?.close();
-    } catch (e) {
-      logW(`failed while closing stub (${s}) in ${this}: ${e}`);
-    }
-    return await newS;
-  }
-  async getRpcStub() {
-    return await this.getStub();
-  }
-  async getStreamStub() {
-    return await this.getStub();
-  }
-  async close() {
-    if (!this.isOpen) {
-      throw new InvalidOperation2(`attempting to close a StubProvider multiple times: ${this}`);
-    }
-    this.isOpen = false;
-    await (await this.stub)?.close();
-  }
-  throwIfClosed() {
-    if (!this.isOpen) {
-      throw new Closed(`Already closed: ${this}`);
-    }
-  }
-};
-var SimpleStub = class _SimpleStub {
-  static async create(provider) {
-    return new _SimpleStub(provider);
-  }
-  constructor(provider) {
-    this.provider = provider;
-    this.isOpen = true;
-  }
-  toString() {
-    return `SimpleStub(${this.provider})`;
-  }
-  get isAlive() {
-    return this.isOpen && this.provider.isAlive;
-  }
-  async close() {
-    this.throwIfClosed();
-    this.isOpen = false;
-    await this.provider.release();
-  }
-  async setContext(context3) {
-    return await this.provider.setContext(context3);
-  }
-  async call(method, data, opts) {
-    this.throwIfClosed();
-    const stub = await this.provider.getRpcStub();
-    try {
-      return await stub.call(method, data, opts);
-    } catch (e) {
-      if (this.isAlive && e instanceof Closed) {
-        throw new TemporarilyUnavailable(`${this}: ${e}`);
-      }
-      throw e;
-    }
-  }
-  async stream(method, toResponse = toAny, toRequest = toAny) {
-    this.throwIfClosed();
-    const stub = await this.provider.getStreamStub();
-    try {
-      return await stub.stream(method, toResponse, toRequest);
-    } catch (e) {
-      if (this.isAlive && e instanceof Closed) {
-        throw new TemporarilyUnavailable(`${this}: ${e}`);
-      }
-      throw e;
-    }
-  }
-  throwIfClosed() {
-    if (!this.isOpen) {
-      throw new Closed(`Already closed: ${this}`);
-    }
-  }
-};
-
-// packages/streamy/node/lib/unixSocket.js
-var maxMessageSize = MiB(10);
-
-// packages/streamy/node/lib/client.js
-var connectJsonClient = async (address) => {
-  return await SimpleStreamyClient.forTransport(await connectWebSocketTransport(address), new JsonSerializer());
-};
-
 // packages/team-service/common/lib/api/team.js
 var import_inversify12 = __toESM(require_inversify(), 1);
 var __decorate16 = function(decorators, target, key, desc) {
@@ -62850,7 +62762,8 @@ var toListManagedServiceArgs = toObject({
   includeDeleted: toUndefOr(toBoolean)
 });
 var toListByLandscapeArgs = toObject({
-  workspaceId: toUndefOr(toNonNegativeInteger)
+  workspaceId: toUndefOr(toNonNegativeInteger),
+  scope: toString
 });
 var toManagedServicePlan = toObject({
   id: toNonNegativeInteger,
@@ -63042,9 +62955,14 @@ var toManagedService2 = toObject({
   config: toManagedServiceConfig,
   status: toOr(toManagedServiceStatus, toSyncError)
 });
+var toStateStreamResponse = toRecord(toOr(toManagedService2, toHeadlessServiceConfig));
 var toSyncLandscapeArgs = toObject({
   workspaceId: toNonNegativeInteger,
   landscape: toDeployStage
+});
+var toLandscapeNetwork = toObject({
+  servers: toRecord(toServerNetwork),
+  routerReplicas: toNumber
 });
 var landscapeService = {
   name: "landscape",
@@ -63059,12 +62977,17 @@ var landscapeService = {
     stateStream: stream({
       access: "public",
       request: toObject({ workspaceId: toNonNegativeInteger }),
-      response: toRecord(toManagedService2)
+      response: toStateStreamResponse
     }),
     getLandscape: rpc({
       access: "public",
       request: toObject({ workspaceId: toNonNegativeInteger }),
       response: toArray(toServer)
+    }),
+    getLandscapeNetwork: rpc({
+      access: "internal",
+      request: toObject({ workspaceId: toNonNegativeInteger }),
+      response: toLandscapeNetwork
     }),
     getLandscapeWithResolvedEnv: rpc({
       access: "internal",
@@ -63167,18 +63090,21 @@ var planIdByConfig = async (products, planTitle, onDemand = false) => {
   return defaultPlanId;
 };
 var withStubs = async (dataCenterId, creds, serviceUrlDc, fn) => {
-  const man = await ServiceStubManager.create(SingleStubProvider.factory(connectJsonClient), (service) => async () => {
-    const sv = toCodesphereService(service);
-    return `${serviceUrlDc(sv, dataCenterId)}`;
+  const man = new StreamyClientManager({
+    createTransport: connectWebSocketTransport,
+    resolveAddress: async (service) => {
+      const sv = toCodesphereService(service);
+      return new URL(`${serviceUrlDc(sv, dataCenterId)}`);
+    }
   });
-  const stubs = [];
+  const clients = [];
   const createStub = async (service, createStub2) => {
-    const ss = await SimpleStub.create(await man.acquire(service));
-    const stub = new createStub2(ss);
+    const client = await man.acquire(service);
+    const stub = new createStub2(client);
     if (stub instanceof AuthnStub) {
       await stub.authenticate(creds);
     }
-    stubs.push(ss);
+    clients.push(client);
     return stub;
   };
   try {
@@ -63194,7 +63120,7 @@ var withStubs = async (dataCenterId, creds, serviceUrlDc, fn) => {
       git: await createStub("ide-service", GitAuthStub)
     });
   } finally {
-    await mapAsync(stubs, (s) => logErrorAsync(() => s.close()));
+    await mapAsync(clients, (s) => logErrorAsync(() => s.close()));
   }
 };
 var serviceUrlCreators = (apiUrl) => {
