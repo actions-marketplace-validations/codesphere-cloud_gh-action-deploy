@@ -39,6 +39,26 @@ inputs:
   cloneDepth:
     description: Whether the repository clone should be shallow or not.
     required: false
+  skipLfs:
+    description: Whether to bypass the automatic downloading (smudging) of Git LFS files during git clone.
+    required: false
+    default: 'false'
+  recurseSubmodules:
+    description: After the clone is created, initialize and clone all submodules.
+    required: false
+    default: 'true'
+  deploymentLinkType:
+    description: |
+      Controls the URL format posted in PR comments.
+      - 'dev-domain' (default): direct link to the running app
+      - 'preview': link to the IDE preview tab
+    required: false
+    default: 'dev-domain'
+  ciProfile:
+    description: |
+      The name of the CI profile to use for the deployment.
+      If not provided - default profile will be used.
+    required: false
   env:
     description: |
       Set environment variables in your workspace.

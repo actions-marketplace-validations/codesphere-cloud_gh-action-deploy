@@ -48,6 +48,31 @@ Default `"false"`.
 
 Whether the repository clone should be shallow or not.
 
+### `skipLfs`
+
+Whether to bypass the automatic downloading (smudging) of Git LFS files during git clone.
+
+Default `"false"`.
+
+### `recurseSubmodules`
+
+After the clone is created, initialize and clone all submodules.
+
+Default `"true"`.
+
+### `deploymentLinkType`
+
+Controls the URL format posted in PR comments.
+
+Available options:
+- `dev-domain` (default): direct link to the running app
+- `preview`: link to the IDE preview tab
+
+### `ciProfile`
+
+The name of the CI profile to use for the deployment.
+If not provided - default profile will be used.
+
 ### `env`
 
 Set environment variables in your workspace.
