@@ -5,9 +5,6 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -3350,14 +3347,14 @@ var require_templates = __commonJS({
       return results;
     }
     function buildStyle(chalk2, styles) {
-      const enabled = {};
+      const enabled2 = {};
       for (const layer of styles) {
         for (const style of layer.styles) {
-          enabled[style[0]] = layer.inverse ? null : style.slice(1);
+          enabled2[style[0]] = layer.inverse ? null : style.slice(1);
         }
       }
       let current = chalk2;
-      for (const [styleName, styles2] of Object.entries(enabled)) {
+      for (const [styleName, styles2] of Object.entries(enabled2)) {
         if (!Array.isArray(styles2)) {
           continue;
         }
@@ -7097,7 +7094,7 @@ var require_data_url = __commonJS({
 var require_webidl = __commonJS({
   "node_modules/@actions/http-client/node_modules/undici/lib/web/fetch/webidl.js"(exports2, module2) {
     "use strict";
-    var { types, inspect: inspect2 } = require("node:util");
+    var { types: types2, inspect: inspect2 } = require("node:util");
     var { markAsUncloneable } = require("node:worker_threads");
     var { toUSVString } = require_util2();
     var webidl = {};
@@ -7287,7 +7284,7 @@ var require_webidl = __commonJS({
           });
         }
         const result = {};
-        if (!types.isProxy(O)) {
+        if (!types2.isProxy(O)) {
           const keys3 = [...Object.getOwnPropertyNames(O), ...Object.getOwnPropertySymbols(O)];
           for (const key of keys3) {
             const typedKey = keyConverter(key, prefix, argument);
@@ -7416,14 +7413,14 @@ var require_webidl = __commonJS({
       return x;
     };
     webidl.converters.ArrayBuffer = function(V, prefix, argument, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isAnyArrayBuffer(V)) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isAnyArrayBuffer(V)) {
         throw webidl.errors.conversionFailed({
           prefix,
           argument: `${argument} ("${webidl.util.Stringify(V)}")`,
           types: ["ArrayBuffer"]
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -7438,14 +7435,14 @@ var require_webidl = __commonJS({
       return V;
     };
     webidl.converters.TypedArray = function(V, T, prefix, name, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isTypedArray(V) || V.constructor.name !== T.name) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isTypedArray(V) || V.constructor.name !== T.name) {
         throw webidl.errors.conversionFailed({
           prefix,
           argument: `${name} ("${webidl.util.Stringify(V)}")`,
           types: [T.name]
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V.buffer)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V.buffer)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -7460,13 +7457,13 @@ var require_webidl = __commonJS({
       return V;
     };
     webidl.converters.DataView = function(V, prefix, name, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isDataView(V)) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isDataView(V)) {
         throw webidl.errors.exception({
           header: prefix,
           message: `${name} is not a DataView.`
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V.buffer)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V.buffer)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -7481,13 +7478,13 @@ var require_webidl = __commonJS({
       return V;
     };
     webidl.converters.BufferSource = function(V, prefix, name, opts) {
-      if (types.isAnyArrayBuffer(V)) {
+      if (types2.isAnyArrayBuffer(V)) {
         return webidl.converters.ArrayBuffer(V, prefix, name, { ...opts, allowShared: false });
       }
-      if (types.isTypedArray(V)) {
+      if (types2.isTypedArray(V)) {
         return webidl.converters.TypedArray(V, V.constructor, prefix, name, { ...opts, allowShared: false });
       }
-      if (types.isDataView(V)) {
+      if (types2.isDataView(V)) {
         return webidl.converters.DataView(V, prefix, name, { ...opts, allowShared: false });
       }
       throw webidl.errors.conversionFailed({
@@ -10981,7 +10978,7 @@ var require_client = __commonJS({
     function getPipelining(client) {
       return client[kPipelining] ?? client[kHTTPContext]?.defaultPipelining ?? 1;
     }
-    var Client = class extends DispatcherBase {
+    var Client2 = class extends DispatcherBase {
       /**
        *
        * @param {string|URL} url
@@ -11409,7 +11406,7 @@ var require_client = __commonJS({
         }
       }
     }
-    module2.exports = Client;
+    module2.exports = Client2;
   }
 });
 
@@ -11668,7 +11665,7 @@ var require_pool = __commonJS({
       kAddClient,
       kGetDispatcher
     } = require_pool_base();
-    var Client = require_client();
+    var Client2 = require_client();
     var {
       InvalidArgumentError
     } = require_errors();
@@ -11679,9 +11676,9 @@ var require_pool = __commonJS({
     var kConnections = /* @__PURE__ */ Symbol("connections");
     var kFactory = /* @__PURE__ */ Symbol("factory");
     function defaultFactory(origin, opts) {
-      return new Client(origin, opts);
+      return new Client2(origin, opts);
     }
-    var Pool = class extends PoolBase {
+    var Pool2 = class extends PoolBase {
       constructor(origin, {
         connections,
         factory = defaultFactory,
@@ -11744,7 +11741,7 @@ var require_pool = __commonJS({
         }
       }
     };
-    module2.exports = Pool;
+    module2.exports = Pool2;
   }
 });
 
@@ -11764,7 +11761,7 @@ var require_balanced_pool = __commonJS({
       kRemoveClient,
       kGetDispatcher
     } = require_pool_base();
-    var Pool = require_pool();
+    var Pool2 = require_pool();
     var { kUrl, kInterceptors } = require_symbols();
     var { parseOrigin } = require_util2();
     var kFactory = /* @__PURE__ */ Symbol("factory");
@@ -11785,7 +11782,7 @@ var require_balanced_pool = __commonJS({
       return a;
     }
     function defaultFactory(origin, opts) {
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var BalancedPool = class extends PoolBase {
       constructor(upstreams = [], { factory = defaultFactory, ...opts } = {}) {
@@ -11899,8 +11896,8 @@ var require_agent = __commonJS({
     var { InvalidArgumentError } = require_errors();
     var { kClients, kRunning, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols();
     var DispatcherBase = require_dispatcher_base();
-    var Pool = require_pool();
-    var Client = require_client();
+    var Pool2 = require_pool();
+    var Client2 = require_client();
     var util = require_util2();
     var createRedirectInterceptor = require_redirect_interceptor();
     var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
@@ -11911,7 +11908,7 @@ var require_agent = __commonJS({
     var kFactory = /* @__PURE__ */ Symbol("factory");
     var kOptions = /* @__PURE__ */ Symbol("options");
     function defaultFactory(origin, opts) {
-      return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
+      return opts && opts.connections === 1 ? new Client2(origin, opts) : new Pool2(origin, opts);
     }
     var Agent = class extends DispatcherBase {
       constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
@@ -11996,11 +11993,11 @@ var require_proxy_agent = __commonJS({
     var { kProxy, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols();
     var { URL: URL2 } = require("node:url");
     var Agent = require_agent();
-    var Pool = require_pool();
+    var Pool2 = require_pool();
     var DispatcherBase = require_dispatcher_base();
     var { InvalidArgumentError, RequestAbortedError, SecureProxyConnectionError } = require_errors();
     var buildConnector = require_connect();
-    var Client = require_client();
+    var Client2 = require_client();
     var kAgent = /* @__PURE__ */ Symbol("proxy agent");
     var kClient = /* @__PURE__ */ Symbol("proxy client");
     var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
@@ -12012,15 +12009,15 @@ var require_proxy_agent = __commonJS({
       return protocol === "https:" ? 443 : 80;
     }
     function defaultFactory(origin, opts) {
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var noop3 = () => {
     };
     function defaultAgentFactory(origin, opts) {
       if (opts.connections === 1) {
-        return new Client(origin, opts);
+        return new Client2(origin, opts);
       }
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var Http1ProxyWrapper = class extends DispatcherBase {
       #client;
@@ -12033,7 +12030,7 @@ var require_proxy_agent = __commonJS({
         if (factory) {
           this.#client = factory(proxyUrl, { connect });
         } else {
-          this.#client = new Client(proxyUrl, { connect });
+          this.#client = new Client2(proxyUrl, { connect });
         }
       }
       [kDispatch](opts, handler2) {
@@ -14355,7 +14352,7 @@ var require_mock_client = __commonJS({
   "node_modules/@actions/http-client/node_modules/undici/lib/mock/mock-client.js"(exports2, module2) {
     "use strict";
     var { promisify } = require("node:util");
-    var Client = require_client();
+    var Client2 = require_client();
     var { buildMockDispatch } = require_mock_utils();
     var {
       kDispatches,
@@ -14369,7 +14366,7 @@ var require_mock_client = __commonJS({
     var { MockInterceptor } = require_mock_interceptor();
     var Symbols = require_symbols();
     var { InvalidArgumentError } = require_errors();
-    var MockClient = class extends Client {
+    var MockClient = class extends Client2 {
       constructor(origin, opts) {
         super(origin, opts);
         if (!opts || !opts.agent || typeof opts.agent.dispatch !== "function") {
@@ -14408,7 +14405,7 @@ var require_mock_pool = __commonJS({
   "node_modules/@actions/http-client/node_modules/undici/lib/mock/mock-pool.js"(exports2, module2) {
     "use strict";
     var { promisify } = require("node:util");
-    var Pool = require_pool();
+    var Pool2 = require_pool();
     var { buildMockDispatch } = require_mock_utils();
     var {
       kDispatches,
@@ -14422,7 +14419,7 @@ var require_mock_pool = __commonJS({
     var { MockInterceptor } = require_mock_interceptor();
     var Symbols = require_symbols();
     var { InvalidArgumentError } = require_errors();
-    var MockPool = class extends Pool {
+    var MockPool = class extends Pool2 {
       constructor(origin, opts) {
         super(origin, opts);
         if (!opts || !opts.agent || typeof opts.agent.dispatch !== "function") {
@@ -15639,9 +15636,9 @@ var require_response = __commonJS({
     var { URLSerializer } = require_data_url();
     var { kConstruct } = require_symbols();
     var assert = require("node:assert");
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var textEncoder = new TextEncoder("utf-8");
-    var Response = class _Response {
+    var Response2 = class _Response {
       // Creates network error Response.
       static error() {
         const responseObject = fromInnerResponse(makeNetworkError(), "immutable");
@@ -15784,8 +15781,8 @@ var require_response = __commonJS({
         return `Response ${nodeUtil.formatWithOptions(options, properties)}`;
       }
     };
-    mixinBody(Response);
-    Object.defineProperties(Response.prototype, {
+    mixinBody(Response2);
+    Object.defineProperties(Response2.prototype, {
       type: kEnumerableProperty,
       url: kEnumerableProperty,
       status: kEnumerableProperty,
@@ -15801,7 +15798,7 @@ var require_response = __commonJS({
         configurable: true
       }
     });
-    Object.defineProperties(Response, {
+    Object.defineProperties(Response2, {
       json: kEnumerableProperty,
       redirect: kEnumerableProperty,
       error: kEnumerableProperty
@@ -15934,7 +15931,7 @@ var require_response = __commonJS({
       }
     }
     function fromInnerResponse(innerResponse, guard) {
-      const response = new Response(kConstruct);
+      const response = new Response2(kConstruct);
       response[kState] = innerResponse;
       response[kHeaders] = new Headers3(kConstruct);
       setHeadersList(response[kHeaders], innerResponse.headersList);
@@ -15960,7 +15957,7 @@ var require_response = __commonJS({
       if (isBlobLike(V)) {
         return webidl.converters.Blob(V, prefix, name, { strict: false });
       }
-      if (ArrayBuffer.isView(V) || types.isArrayBuffer(V)) {
+      if (ArrayBuffer.isView(V) || types2.isArrayBuffer(V)) {
         return webidl.converters.BufferSource(V, prefix, name);
       }
       if (util.isFormDataLike(V)) {
@@ -16002,7 +15999,7 @@ var require_response = __commonJS({
       makeResponse,
       makeAppropriateNetworkError,
       filterResponse,
-      Response,
+      Response: Response2,
       cloneResponse,
       fromInnerResponse
     };
@@ -18196,7 +18193,7 @@ var require_util5 = __commonJS({
     var { ProgressEvent } = require_progressevent();
     var { getEncoding } = require_encoding();
     var { serializeAMimeType, parseMIMEType } = require_data_url();
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var { StringDecoder } = require("string_decoder");
     var { btoa: btoa2 } = require("node:buffer");
     var staticPropertyDescriptors = {
@@ -18226,7 +18223,7 @@ var require_util5 = __commonJS({
               });
             }
             isFirstChunk = false;
-            if (!done && types.isUint8Array(value)) {
+            if (!done && types2.isUint8Array(value)) {
               bytes2.push(value);
               if ((fr[kLastProgressEventFired] === void 0 || Date.now() - fr[kLastProgressEventFired] >= 50) && !fr[kAborted]) {
                 fr[kLastProgressEventFired] = Date.now();
@@ -18674,7 +18671,7 @@ var require_cache = __commonJS({
     var { urlEquals, getFieldValues } = require_util6();
     var { kEnumerableProperty, isDisturbed } = require_util2();
     var { webidl } = require_webidl();
-    var { Response, cloneResponse, fromInnerResponse } = require_response();
+    var { Response: Response2, cloneResponse, fromInnerResponse } = require_response();
     var { Request, fromInnerRequest } = require_request2();
     var { kState } = require_symbols2();
     var { fetching } = require_fetch();
@@ -19201,7 +19198,7 @@ var require_cache = __commonJS({
         converter: webidl.converters.DOMString
       }
     ]);
-    webidl.converters.Response = webidl.interfaceConverter(Response);
+    webidl.converters.Response = webidl.interfaceConverter(Response2);
     webidl.converters["sequence<RequestInfo>"] = webidl.sequenceConverter(
       webidl.converters.RequestInfo
     );
@@ -21014,7 +21011,7 @@ var require_websocket = __commonJS({
     var { ByteParser } = require_receiver();
     var { kEnumerableProperty, isBlobLike } = require_util2();
     var { getGlobalDispatcher } = require_global2();
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var { ErrorEvent, CloseEvent } = require_events();
     var { SendQueue } = require_sender();
     var WebSocket2 = class _WebSocket extends EventTarget {
@@ -21137,7 +21134,7 @@ var require_websocket = __commonJS({
           this.#sendQueue.add(data, () => {
             this.#bufferedAmount -= length;
           }, sendHints.string);
-        } else if (types.isArrayBuffer(data)) {
+        } else if (types2.isArrayBuffer(data)) {
           this.#bufferedAmount += data.byteLength;
           this.#sendQueue.add(data, () => {
             this.#bufferedAmount -= data.byteLength;
@@ -21343,7 +21340,7 @@ var require_websocket = __commonJS({
         if (isBlobLike(V)) {
           return webidl.converters.Blob(V, { strict: false });
         }
-        if (ArrayBuffer.isView(V) || types.isArrayBuffer(V)) {
+        if (ArrayBuffer.isView(V) || types2.isArrayBuffer(V)) {
           return webidl.converters.BufferSource(V);
         }
       }
@@ -21928,9 +21925,9 @@ var require_eventsource = __commonJS({
 var require_undici = __commonJS({
   "node_modules/@actions/http-client/node_modules/undici/index.js"(exports2, module2) {
     "use strict";
-    var Client = require_client();
+    var Client2 = require_client();
     var Dispatcher = require_dispatcher();
-    var Pool = require_pool();
+    var Pool2 = require_pool();
     var BalancedPool = require_balanced_pool();
     var Agent = require_agent();
     var ProxyAgent2 = require_proxy_agent();
@@ -21952,8 +21949,8 @@ var require_undici = __commonJS({
     var createRedirectInterceptor = require_redirect_interceptor();
     Object.assign(Dispatcher.prototype, api);
     module2.exports.Dispatcher = Dispatcher;
-    module2.exports.Client = Client;
-    module2.exports.Pool = Pool;
+    module2.exports.Client = Client2;
+    module2.exports.Pool = Pool2;
     module2.exports.BalancedPool = BalancedPool;
     module2.exports.Agent = Agent;
     module2.exports.ProxyAgent = ProxyAgent2;
@@ -25428,7 +25425,7 @@ var require_data_url2 = __commonJS({
 var require_webidl2 = __commonJS({
   "node_modules/@actions/github/node_modules/undici/lib/web/fetch/webidl.js"(exports2, module2) {
     "use strict";
-    var { types, inspect: inspect2 } = require("node:util");
+    var { types: types2, inspect: inspect2 } = require("node:util");
     var { markAsUncloneable } = require("node:worker_threads");
     var { toUSVString } = require_util10();
     var webidl = {};
@@ -25618,7 +25615,7 @@ var require_webidl2 = __commonJS({
           });
         }
         const result = {};
-        if (!types.isProxy(O)) {
+        if (!types2.isProxy(O)) {
           const keys3 = [...Object.getOwnPropertyNames(O), ...Object.getOwnPropertySymbols(O)];
           for (const key of keys3) {
             const typedKey = keyConverter(key, prefix, argument);
@@ -25747,14 +25744,14 @@ var require_webidl2 = __commonJS({
       return x;
     };
     webidl.converters.ArrayBuffer = function(V, prefix, argument, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isAnyArrayBuffer(V)) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isAnyArrayBuffer(V)) {
         throw webidl.errors.conversionFailed({
           prefix,
           argument: `${argument} ("${webidl.util.Stringify(V)}")`,
           types: ["ArrayBuffer"]
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -25769,14 +25766,14 @@ var require_webidl2 = __commonJS({
       return V;
     };
     webidl.converters.TypedArray = function(V, T, prefix, name, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isTypedArray(V) || V.constructor.name !== T.name) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isTypedArray(V) || V.constructor.name !== T.name) {
         throw webidl.errors.conversionFailed({
           prefix,
           argument: `${name} ("${webidl.util.Stringify(V)}")`,
           types: [T.name]
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V.buffer)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V.buffer)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -25791,13 +25788,13 @@ var require_webidl2 = __commonJS({
       return V;
     };
     webidl.converters.DataView = function(V, prefix, name, opts) {
-      if (webidl.util.Type(V) !== "Object" || !types.isDataView(V)) {
+      if (webidl.util.Type(V) !== "Object" || !types2.isDataView(V)) {
         throw webidl.errors.exception({
           header: prefix,
           message: `${name} is not a DataView.`
         });
       }
-      if (opts?.allowShared === false && types.isSharedArrayBuffer(V.buffer)) {
+      if (opts?.allowShared === false && types2.isSharedArrayBuffer(V.buffer)) {
         throw webidl.errors.exception({
           header: "ArrayBuffer",
           message: "SharedArrayBuffer is not allowed."
@@ -25812,13 +25809,13 @@ var require_webidl2 = __commonJS({
       return V;
     };
     webidl.converters.BufferSource = function(V, prefix, name, opts) {
-      if (types.isAnyArrayBuffer(V)) {
+      if (types2.isAnyArrayBuffer(V)) {
         return webidl.converters.ArrayBuffer(V, prefix, name, { ...opts, allowShared: false });
       }
-      if (types.isTypedArray(V)) {
+      if (types2.isTypedArray(V)) {
         return webidl.converters.TypedArray(V, V.constructor, prefix, name, { ...opts, allowShared: false });
       }
-      if (types.isDataView(V)) {
+      if (types2.isDataView(V)) {
         return webidl.converters.DataView(V, prefix, name, { ...opts, allowShared: false });
       }
       throw webidl.errors.conversionFailed({
@@ -29312,7 +29309,7 @@ var require_client2 = __commonJS({
     function getPipelining(client) {
       return client[kPipelining] ?? client[kHTTPContext]?.defaultPipelining ?? 1;
     }
-    var Client = class extends DispatcherBase {
+    var Client2 = class extends DispatcherBase {
       /**
        *
        * @param {string|URL} url
@@ -29740,7 +29737,7 @@ var require_client2 = __commonJS({
         }
       }
     }
-    module2.exports = Client;
+    module2.exports = Client2;
   }
 });
 
@@ -29999,7 +29996,7 @@ var require_pool2 = __commonJS({
       kAddClient,
       kGetDispatcher
     } = require_pool_base2();
-    var Client = require_client2();
+    var Client2 = require_client2();
     var {
       InvalidArgumentError
     } = require_errors2();
@@ -30010,9 +30007,9 @@ var require_pool2 = __commonJS({
     var kConnections = /* @__PURE__ */ Symbol("connections");
     var kFactory = /* @__PURE__ */ Symbol("factory");
     function defaultFactory(origin, opts) {
-      return new Client(origin, opts);
+      return new Client2(origin, opts);
     }
-    var Pool = class extends PoolBase {
+    var Pool2 = class extends PoolBase {
       constructor(origin, {
         connections,
         factory = defaultFactory,
@@ -30075,7 +30072,7 @@ var require_pool2 = __commonJS({
         }
       }
     };
-    module2.exports = Pool;
+    module2.exports = Pool2;
   }
 });
 
@@ -30095,7 +30092,7 @@ var require_balanced_pool2 = __commonJS({
       kRemoveClient,
       kGetDispatcher
     } = require_pool_base2();
-    var Pool = require_pool2();
+    var Pool2 = require_pool2();
     var { kUrl, kInterceptors } = require_symbols6();
     var { parseOrigin } = require_util10();
     var kFactory = /* @__PURE__ */ Symbol("factory");
@@ -30116,7 +30113,7 @@ var require_balanced_pool2 = __commonJS({
       return a;
     }
     function defaultFactory(origin, opts) {
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var BalancedPool = class extends PoolBase {
       constructor(upstreams = [], { factory = defaultFactory, ...opts } = {}) {
@@ -30230,8 +30227,8 @@ var require_agent2 = __commonJS({
     var { InvalidArgumentError } = require_errors2();
     var { kClients, kRunning, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols6();
     var DispatcherBase = require_dispatcher_base2();
-    var Pool = require_pool2();
-    var Client = require_client2();
+    var Pool2 = require_pool2();
+    var Client2 = require_client2();
     var util = require_util10();
     var createRedirectInterceptor = require_redirect_interceptor2();
     var kOnConnect = /* @__PURE__ */ Symbol("onConnect");
@@ -30242,7 +30239,7 @@ var require_agent2 = __commonJS({
     var kFactory = /* @__PURE__ */ Symbol("factory");
     var kOptions = /* @__PURE__ */ Symbol("options");
     function defaultFactory(origin, opts) {
-      return opts && opts.connections === 1 ? new Client(origin, opts) : new Pool(origin, opts);
+      return opts && opts.connections === 1 ? new Client2(origin, opts) : new Pool2(origin, opts);
     }
     var Agent = class extends DispatcherBase {
       constructor({ factory = defaultFactory, maxRedirections = 0, connect, ...options } = {}) {
@@ -30327,11 +30324,11 @@ var require_proxy_agent2 = __commonJS({
     var { kProxy, kClose, kDestroy, kDispatch, kInterceptors } = require_symbols6();
     var { URL: URL2 } = require("node:url");
     var Agent = require_agent2();
-    var Pool = require_pool2();
+    var Pool2 = require_pool2();
     var DispatcherBase = require_dispatcher_base2();
     var { InvalidArgumentError, RequestAbortedError, SecureProxyConnectionError } = require_errors2();
     var buildConnector = require_connect2();
-    var Client = require_client2();
+    var Client2 = require_client2();
     var kAgent = /* @__PURE__ */ Symbol("proxy agent");
     var kClient = /* @__PURE__ */ Symbol("proxy client");
     var kProxyHeaders = /* @__PURE__ */ Symbol("proxy headers");
@@ -30343,15 +30340,15 @@ var require_proxy_agent2 = __commonJS({
       return protocol === "https:" ? 443 : 80;
     }
     function defaultFactory(origin, opts) {
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var noop3 = () => {
     };
     function defaultAgentFactory(origin, opts) {
       if (opts.connections === 1) {
-        return new Client(origin, opts);
+        return new Client2(origin, opts);
       }
-      return new Pool(origin, opts);
+      return new Pool2(origin, opts);
     }
     var Http1ProxyWrapper = class extends DispatcherBase {
       #client;
@@ -30364,7 +30361,7 @@ var require_proxy_agent2 = __commonJS({
         if (factory) {
           this.#client = factory(proxyUrl, { connect });
         } else {
-          this.#client = new Client(proxyUrl, { connect });
+          this.#client = new Client2(proxyUrl, { connect });
         }
       }
       [kDispatch](opts, handler2) {
@@ -32686,7 +32683,7 @@ var require_mock_client2 = __commonJS({
   "node_modules/@actions/github/node_modules/undici/lib/mock/mock-client.js"(exports2, module2) {
     "use strict";
     var { promisify } = require("node:util");
-    var Client = require_client2();
+    var Client2 = require_client2();
     var { buildMockDispatch } = require_mock_utils2();
     var {
       kDispatches,
@@ -32700,7 +32697,7 @@ var require_mock_client2 = __commonJS({
     var { MockInterceptor } = require_mock_interceptor2();
     var Symbols = require_symbols6();
     var { InvalidArgumentError } = require_errors2();
-    var MockClient = class extends Client {
+    var MockClient = class extends Client2 {
       constructor(origin, opts) {
         super(origin, opts);
         if (!opts || !opts.agent || typeof opts.agent.dispatch !== "function") {
@@ -32739,7 +32736,7 @@ var require_mock_pool2 = __commonJS({
   "node_modules/@actions/github/node_modules/undici/lib/mock/mock-pool.js"(exports2, module2) {
     "use strict";
     var { promisify } = require("node:util");
-    var Pool = require_pool2();
+    var Pool2 = require_pool2();
     var { buildMockDispatch } = require_mock_utils2();
     var {
       kDispatches,
@@ -32753,7 +32750,7 @@ var require_mock_pool2 = __commonJS({
     var { MockInterceptor } = require_mock_interceptor2();
     var Symbols = require_symbols6();
     var { InvalidArgumentError } = require_errors2();
-    var MockPool = class extends Pool {
+    var MockPool = class extends Pool2 {
       constructor(origin, opts) {
         super(origin, opts);
         if (!opts || !opts.agent || typeof opts.agent.dispatch !== "function") {
@@ -33970,9 +33967,9 @@ var require_response2 = __commonJS({
     var { URLSerializer } = require_data_url2();
     var { kConstruct } = require_symbols6();
     var assert = require("node:assert");
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var textEncoder = new TextEncoder("utf-8");
-    var Response = class _Response {
+    var Response2 = class _Response {
       // Creates network error Response.
       static error() {
         const responseObject = fromInnerResponse(makeNetworkError(), "immutable");
@@ -34115,8 +34112,8 @@ var require_response2 = __commonJS({
         return `Response ${nodeUtil.formatWithOptions(options, properties)}`;
       }
     };
-    mixinBody(Response);
-    Object.defineProperties(Response.prototype, {
+    mixinBody(Response2);
+    Object.defineProperties(Response2.prototype, {
       type: kEnumerableProperty,
       url: kEnumerableProperty,
       status: kEnumerableProperty,
@@ -34132,7 +34129,7 @@ var require_response2 = __commonJS({
         configurable: true
       }
     });
-    Object.defineProperties(Response, {
+    Object.defineProperties(Response2, {
       json: kEnumerableProperty,
       redirect: kEnumerableProperty,
       error: kEnumerableProperty
@@ -34265,7 +34262,7 @@ var require_response2 = __commonJS({
       }
     }
     function fromInnerResponse(innerResponse, guard) {
-      const response = new Response(kConstruct);
+      const response = new Response2(kConstruct);
       response[kState] = innerResponse;
       response[kHeaders] = new Headers3(kConstruct);
       setHeadersList(response[kHeaders], innerResponse.headersList);
@@ -34291,7 +34288,7 @@ var require_response2 = __commonJS({
       if (isBlobLike(V)) {
         return webidl.converters.Blob(V, prefix, name, { strict: false });
       }
-      if (ArrayBuffer.isView(V) || types.isArrayBuffer(V)) {
+      if (ArrayBuffer.isView(V) || types2.isArrayBuffer(V)) {
         return webidl.converters.BufferSource(V, prefix, name);
       }
       if (util.isFormDataLike(V)) {
@@ -34333,7 +34330,7 @@ var require_response2 = __commonJS({
       makeResponse,
       makeAppropriateNetworkError,
       filterResponse,
-      Response,
+      Response: Response2,
       cloneResponse,
       fromInnerResponse
     };
@@ -36527,7 +36524,7 @@ var require_util13 = __commonJS({
     var { ProgressEvent } = require_progressevent2();
     var { getEncoding } = require_encoding2();
     var { serializeAMimeType, parseMIMEType } = require_data_url2();
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var { StringDecoder } = require("string_decoder");
     var { btoa: btoa2 } = require("node:buffer");
     var staticPropertyDescriptors = {
@@ -36557,7 +36554,7 @@ var require_util13 = __commonJS({
               });
             }
             isFirstChunk = false;
-            if (!done && types.isUint8Array(value)) {
+            if (!done && types2.isUint8Array(value)) {
               bytes2.push(value);
               if ((fr[kLastProgressEventFired] === void 0 || Date.now() - fr[kLastProgressEventFired] >= 50) && !fr[kAborted]) {
                 fr[kLastProgressEventFired] = Date.now();
@@ -37005,7 +37002,7 @@ var require_cache2 = __commonJS({
     var { urlEquals, getFieldValues } = require_util14();
     var { kEnumerableProperty, isDisturbed } = require_util10();
     var { webidl } = require_webidl2();
-    var { Response, cloneResponse, fromInnerResponse } = require_response2();
+    var { Response: Response2, cloneResponse, fromInnerResponse } = require_response2();
     var { Request, fromInnerRequest } = require_request4();
     var { kState } = require_symbols7();
     var { fetching } = require_fetch2();
@@ -37532,7 +37529,7 @@ var require_cache2 = __commonJS({
         converter: webidl.converters.DOMString
       }
     ]);
-    webidl.converters.Response = webidl.interfaceConverter(Response);
+    webidl.converters.Response = webidl.interfaceConverter(Response2);
     webidl.converters["sequence<RequestInfo>"] = webidl.sequenceConverter(
       webidl.converters.RequestInfo
     );
@@ -39345,7 +39342,7 @@ var require_websocket2 = __commonJS({
     var { ByteParser } = require_receiver2();
     var { kEnumerableProperty, isBlobLike } = require_util10();
     var { getGlobalDispatcher } = require_global4();
-    var { types } = require("node:util");
+    var { types: types2 } = require("node:util");
     var { ErrorEvent, CloseEvent } = require_events2();
     var { SendQueue } = require_sender2();
     var WebSocket2 = class _WebSocket extends EventTarget {
@@ -39468,7 +39465,7 @@ var require_websocket2 = __commonJS({
           this.#sendQueue.add(data, () => {
             this.#bufferedAmount -= length;
           }, sendHints.string);
-        } else if (types.isArrayBuffer(data)) {
+        } else if (types2.isArrayBuffer(data)) {
           this.#bufferedAmount += data.byteLength;
           this.#sendQueue.add(data, () => {
             this.#bufferedAmount -= data.byteLength;
@@ -39674,7 +39671,7 @@ var require_websocket2 = __commonJS({
         if (isBlobLike(V)) {
           return webidl.converters.Blob(V, { strict: false });
         }
-        if (ArrayBuffer.isView(V) || types.isArrayBuffer(V)) {
+        if (ArrayBuffer.isView(V) || types2.isArrayBuffer(V)) {
           return webidl.converters.BufferSource(V);
         }
       }
@@ -40259,9 +40256,9 @@ var require_eventsource2 = __commonJS({
 var require_undici2 = __commonJS({
   "node_modules/@actions/github/node_modules/undici/index.js"(exports2, module2) {
     "use strict";
-    var Client = require_client2();
+    var Client2 = require_client2();
     var Dispatcher = require_dispatcher2();
-    var Pool = require_pool2();
+    var Pool2 = require_pool2();
     var BalancedPool = require_balanced_pool2();
     var Agent = require_agent2();
     var ProxyAgent2 = require_proxy_agent2();
@@ -40283,8 +40280,8 @@ var require_undici2 = __commonJS({
     var createRedirectInterceptor = require_redirect_interceptor2();
     Object.assign(Dispatcher.prototype, api);
     module2.exports.Dispatcher = Dispatcher;
-    module2.exports.Client = Client;
-    module2.exports.Pool = Pool;
+    module2.exports.Client = Client2;
+    module2.exports.Pool = Pool2;
     module2.exports.BalancedPool = BalancedPool;
     module2.exports.Agent = Agent;
     module2.exports.ProxyAgent = ProxyAgent2;
@@ -42396,11 +42393,11 @@ var require_binding_utils = __commonJS({
     var multiBindToService = function(container) {
       return function(service) {
         return function() {
-          var types = [];
+          var types2 = [];
           for (var _i = 0; _i < arguments.length; _i++) {
-            types[_i] = arguments[_i];
+            types2[_i] = arguments[_i];
           }
-          return types.forEach(function(t) {
+          return types2.forEach(function(t) {
             return container.bind(t).toService(service);
           });
         };
@@ -44782,8 +44779,8 @@ var require_injectable = __commonJS({
         if (Reflect.hasOwnMetadata(METADATA_KEY.PARAM_TYPES, target)) {
           throw new Error(ERRORS_MSGS.DUPLICATED_INJECTABLE_DECORATOR);
         }
-        var types = Reflect.getMetadata(METADATA_KEY.DESIGN_PARAM_TYPES, target) || [];
-        Reflect.defineMetadata(METADATA_KEY.PARAM_TYPES, types, target);
+        var types2 = Reflect.getMetadata(METADATA_KEY.DESIGN_PARAM_TYPES, target) || [];
+        Reflect.defineMetadata(METADATA_KEY.PARAM_TYPES, types2, target);
         return target;
       };
     }
@@ -50161,9 +50158,9 @@ var require_node_cache2 = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/postgres-array/index.js
+// node_modules/postgres-array/index.js
 var require_postgres_array = __commonJS({
-  "node_modules/pg/node_modules/postgres-array/index.js"(exports2) {
+  "node_modules/postgres-array/index.js"(exports2) {
     "use strict";
     exports2.parse = function(source, transform) {
       return new ArrayParser(source, transform).parse();
@@ -50255,9 +50252,9 @@ var require_postgres_array = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/pg-types/lib/arrayParser.js
+// node_modules/pg-types/lib/arrayParser.js
 var require_arrayParser = __commonJS({
-  "node_modules/pg/node_modules/pg-types/lib/arrayParser.js"(exports2, module2) {
+  "node_modules/pg-types/lib/arrayParser.js"(exports2, module2) {
     var array = require_postgres_array();
     module2.exports = {
       create: function(source, transform) {
@@ -50271,9 +50268,9 @@ var require_arrayParser = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/postgres-date/index.js
+// node_modules/postgres-date/index.js
 var require_postgres_date = __commonJS({
-  "node_modules/pg/node_modules/postgres-date/index.js"(exports2, module2) {
+  "node_modules/postgres-date/index.js"(exports2, module2) {
     "use strict";
     var DATE_TIME = /(\d{1,})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(\.\d{1,})?.*?( BC)?$/;
     var DATE = /^(\d{1,})-(\d{2})-(\d{2})( BC)?$/;
@@ -50377,9 +50374,9 @@ var require_mutable = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/postgres-interval/index.js
+// node_modules/postgres-interval/index.js
 var require_postgres_interval = __commonJS({
-  "node_modules/pg/node_modules/postgres-interval/index.js"(exports2, module2) {
+  "node_modules/postgres-interval/index.js"(exports2, module2) {
     "use strict";
     var extend = require_mutable();
     module2.exports = PostgresInterval;
@@ -50468,9 +50465,9 @@ var require_postgres_interval = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/postgres-bytea/index.js
+// node_modules/postgres-bytea/index.js
 var require_postgres_bytea = __commonJS({
-  "node_modules/pg/node_modules/postgres-bytea/index.js"(exports2, module2) {
+  "node_modules/postgres-bytea/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function parseBytea(input) {
       if (/^\\x/.test(input)) {
@@ -50503,9 +50500,9 @@ var require_postgres_bytea = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/pg-types/lib/textParsers.js
+// node_modules/pg-types/lib/textParsers.js
 var require_textParsers = __commonJS({
-  "node_modules/pg/node_modules/pg-types/lib/textParsers.js"(exports2, module2) {
+  "node_modules/pg-types/lib/textParsers.js"(exports2, module2) {
     var array = require_postgres_array();
     var arrayParser = require_arrayParser();
     var parseDate = require_postgres_date();
@@ -50783,9 +50780,9 @@ var require_pg_int8 = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/pg-types/lib/binaryParsers.js
+// node_modules/pg-types/lib/binaryParsers.js
 var require_binaryParsers = __commonJS({
-  "node_modules/pg/node_modules/pg-types/lib/binaryParsers.js"(exports2, module2) {
+  "node_modules/pg-types/lib/binaryParsers.js"(exports2, module2) {
     var parseInt64 = require_pg_int8();
     var parseBits = function(data, bits, offset, invert, callback) {
       offset = offset || 0;
@@ -50983,9 +50980,9 @@ var require_binaryParsers = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/pg-types/lib/builtins.js
+// node_modules/pg-types/lib/builtins.js
 var require_builtins = __commonJS({
-  "node_modules/pg/node_modules/pg-types/lib/builtins.js"(exports2, module2) {
+  "node_modules/pg-types/lib/builtins.js"(exports2, module2) {
     module2.exports = {
       BOOL: 16,
       BYTEA: 17,
@@ -51051,9 +51048,9 @@ var require_builtins = __commonJS({
   }
 });
 
-// node_modules/pg/node_modules/pg-types/index.js
+// node_modules/pg-types/index.js
 var require_pg_types = __commonJS({
-  "node_modules/pg/node_modules/pg-types/index.js"(exports2) {
+  "node_modules/pg-types/index.js"(exports2) {
     var textParsers = require_textParsers();
     var binaryParsers = require_binaryParsers();
     var arrayParser = require_arrayParser();
@@ -51096,11 +51093,16 @@ var require_pg_types = __commonJS({
 var require_defaults = __commonJS({
   "node_modules/pg/lib/defaults.js"(exports2, module2) {
     "use strict";
+    var user;
+    try {
+      user = process.platform === "win32" ? process.env.USERNAME : process.env.USER;
+    } catch {
+    }
     module2.exports = {
       // database host. defaults to localhost
       host: "localhost",
       // database user's name
-      user: process.platform === "win32" ? process.env.USERNAME : process.env.USER,
+      user,
       // name of database to connect
       database: void 0,
       // database user's password
@@ -51158,14 +51160,16 @@ var require_defaults = __commonJS({
 var require_utils3 = __commonJS({
   "node_modules/pg/lib/utils.js"(exports2, module2) {
     "use strict";
-    var defaults2 = require_defaults();
+    var defaults3 = require_defaults();
+    var util = require("util");
+    var { isDate } = util.types || util;
     function escapeElement(elementRepresentation) {
-      var escaped = elementRepresentation.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const escaped = elementRepresentation.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       return '"' + escaped + '"';
     }
     function arrayString(val) {
-      var result = "{";
-      for (var i = 0; i < val.length; i++) {
+      let result = "{";
+      for (let i = 0; i < val.length; i++) {
         if (i > 0) {
           result = result + ",";
         }
@@ -51174,9 +51178,9 @@ var require_utils3 = __commonJS({
         } else if (Array.isArray(val[i])) {
           result = result + arrayString(val[i]);
         } else if (ArrayBuffer.isView(val[i])) {
-          var item = val[i];
+          let item = val[i];
           if (!(item instanceof Buffer)) {
-            var buf = Buffer.from(item.buffer, item.byteOffset, item.byteLength);
+            const buf = Buffer.from(item.buffer, item.byteOffset, item.byteLength);
             if (buf.length === item.byteLength) {
               item = buf;
             } else {
@@ -51195,27 +51199,27 @@ var require_utils3 = __commonJS({
       if (val == null) {
         return null;
       }
-      if (val instanceof Buffer) {
-        return val;
-      }
-      if (ArrayBuffer.isView(val)) {
-        var buf = Buffer.from(val.buffer, val.byteOffset, val.byteLength);
-        if (buf.length === val.byteLength) {
-          return buf;
-        }
-        return buf.slice(val.byteOffset, val.byteOffset + val.byteLength);
-      }
-      if (val instanceof Date) {
-        if (defaults2.parseInputDatesAsUTC) {
-          return dateToStringUTC(val);
-        } else {
-          return dateToString(val);
-        }
-      }
-      if (Array.isArray(val)) {
-        return arrayString(val);
-      }
       if (typeof val === "object") {
+        if (val instanceof Buffer) {
+          return val;
+        }
+        if (ArrayBuffer.isView(val)) {
+          const buf = Buffer.from(val.buffer, val.byteOffset, val.byteLength);
+          if (buf.length === val.byteLength) {
+            return buf;
+          }
+          return buf.slice(val.byteOffset, val.byteOffset + val.byteLength);
+        }
+        if (isDate(val)) {
+          if (defaults3.parseInputDatesAsUTC) {
+            return dateToStringUTC(val);
+          } else {
+            return dateToString(val);
+          }
+        }
+        if (Array.isArray(val)) {
+          return arrayString(val);
+        }
         return prepareObject(val, seen);
       }
       return val.toString();
@@ -51231,34 +51235,27 @@ var require_utils3 = __commonJS({
       }
       return JSON.stringify(val);
     }
-    function pad(number, digits) {
-      number = "" + number;
-      while (number.length < digits) {
-        number = "0" + number;
-      }
-      return number;
-    }
     function dateToString(date) {
-      var offset = -date.getTimezoneOffset();
-      var year = date.getFullYear();
-      var isBCYear = year < 1;
+      let offset = -date.getTimezoneOffset();
+      let year = date.getFullYear();
+      const isBCYear = year < 1;
       if (isBCYear) year = Math.abs(year) + 1;
-      var ret = pad(year, 4) + "-" + pad(date.getMonth() + 1, 2) + "-" + pad(date.getDate(), 2) + "T" + pad(date.getHours(), 2) + ":" + pad(date.getMinutes(), 2) + ":" + pad(date.getSeconds(), 2) + "." + pad(date.getMilliseconds(), 3);
+      let ret = String(year).padStart(4, "0") + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0") + "T" + String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0") + ":" + String(date.getSeconds()).padStart(2, "0") + "." + String(date.getMilliseconds()).padStart(3, "0");
       if (offset < 0) {
         ret += "-";
         offset *= -1;
       } else {
         ret += "+";
       }
-      ret += pad(Math.floor(offset / 60), 2) + ":" + pad(offset % 60, 2);
+      ret += String(Math.floor(offset / 60)).padStart(2, "0") + ":" + String(offset % 60).padStart(2, "0");
       if (isBCYear) ret += " BC";
       return ret;
     }
     function dateToStringUTC(date) {
-      var year = date.getUTCFullYear();
-      var isBCYear = year < 1;
+      let year = date.getUTCFullYear();
+      const isBCYear = year < 1;
       if (isBCYear) year = Math.abs(year) + 1;
-      var ret = pad(year, 4) + "-" + pad(date.getUTCMonth() + 1, 2) + "-" + pad(date.getUTCDate(), 2) + "T" + pad(date.getUTCHours(), 2) + ":" + pad(date.getUTCMinutes(), 2) + ":" + pad(date.getUTCSeconds(), 2) + "." + pad(date.getUTCMilliseconds(), 3);
+      let ret = String(year).padStart(4, "0") + "-" + String(date.getUTCMonth() + 1).padStart(2, "0") + "-" + String(date.getUTCDate()).padStart(2, "0") + "T" + String(date.getUTCHours()).padStart(2, "0") + ":" + String(date.getUTCMinutes()).padStart(2, "0") + ":" + String(date.getUTCSeconds()).padStart(2, "0") + "." + String(date.getUTCMilliseconds()).padStart(3, "0");
       ret += "+00:00";
       if (isBCYear) ret += " BC";
       return ret;
@@ -51277,14 +51274,20 @@ var require_utils3 = __commonJS({
       }
       return config;
     }
-    var escapeIdentifier = function(str) {
+    var escapeIdentifier2 = function(str) {
       return '"' + str.replace(/"/g, '""') + '"';
     };
-    var escapeLiteral = function(str) {
-      var hasBackslash = false;
-      var escaped = "'";
-      for (var i = 0; i < str.length; i++) {
-        var c = str[i];
+    var escapeLiteral2 = function(str) {
+      let hasBackslash = false;
+      let escaped = "'";
+      if (str == null) {
+        return "''";
+      }
+      if (typeof str !== "string") {
+        return "''";
+      }
+      for (let i = 0; i < str.length; i++) {
+        const c = str[i];
         if (c === "'") {
           escaped += c + c;
         } else if (c === "\\") {
@@ -51305,8 +51308,8 @@ var require_utils3 = __commonJS({
         return prepareValue(value);
       },
       normalizeQueryConfig,
-      escapeIdentifier,
-      escapeLiteral
+      escapeIdentifier: escapeIdentifier2,
+      escapeLiteral: escapeLiteral2
     };
   }
 });
@@ -51319,13 +51322,17 @@ var require_utils_legacy = __commonJS({
     function md5(string) {
       return nodeCrypto.createHash("md5").update(string, "utf-8").digest("hex");
     }
-    function postgresMd5PasswordHash(user2, password, salt) {
-      var inner = md5(password + user2);
-      var outer = md5(Buffer.concat([Buffer.from(inner), salt]));
+    function postgresMd5PasswordHash(user, password, salt) {
+      const inner = md5(password + user);
+      const outer = md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
     function sha256(text) {
       return nodeCrypto.createHash("sha256").update(text).digest();
+    }
+    function hashByName(hashName, text) {
+      hashName = hashName.replace(/(\D)-/, "$1");
+      return nodeCrypto.createHash(hashName).update(text).digest();
     }
     function hmacSha256(key, msg) {
       return nodeCrypto.createHmac("sha256", key).update(msg).digest();
@@ -51338,6 +51345,7 @@ var require_utils_legacy = __commonJS({
       randomBytes: nodeCrypto.randomBytes,
       deriveKey,
       sha256,
+      hashByName,
       hmacSha256,
       md5
     };
@@ -51353,6 +51361,7 @@ var require_utils_webcrypto = __commonJS({
       randomBytes,
       deriveKey,
       sha256,
+      hashByName,
       hmacSha256,
       md5
     };
@@ -51371,13 +51380,16 @@ var require_utils_webcrypto = __commonJS({
         return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
       }
     }
-    async function postgresMd5PasswordHash(user2, password, salt) {
-      var inner = await md5(password + user2);
-      var outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
+    async function postgresMd5PasswordHash(user, password, salt) {
+      const inner = await md5(password + user);
+      const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
     async function sha256(text) {
       return await subtleCrypto.digest("SHA-256", text);
+    }
+    async function hashByName(hashName, text) {
+      return await subtleCrypto.digest(hashName, text);
     }
     async function hmacSha256(keyBuffer, msg) {
       const key = await subtleCrypto.importKey("raw", keyBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -51404,24 +51416,145 @@ var require_utils4 = __commonJS({
   }
 });
 
+// node_modules/pg/lib/crypto/cert-signatures.js
+var require_cert_signatures = __commonJS({
+  "node_modules/pg/lib/crypto/cert-signatures.js"(exports2, module2) {
+    function x509Error(msg, cert) {
+      return new Error("SASL channel binding: " + msg + " when parsing public certificate " + cert.toString("base64"));
+    }
+    function readASN1Length(data, index) {
+      let length = data[index++];
+      if (length < 128) return { length, index };
+      const lengthBytes = length & 127;
+      if (lengthBytes > 4) throw x509Error("bad length", data);
+      length = 0;
+      for (let i = 0; i < lengthBytes; i++) {
+        length = length << 8 | data[index++];
+      }
+      return { length, index };
+    }
+    function readASN1OID(data, index) {
+      if (data[index++] !== 6) throw x509Error("non-OID data", data);
+      const { length: OIDLength, index: indexAfterOIDLength } = readASN1Length(data, index);
+      index = indexAfterOIDLength;
+      const lastIndex = index + OIDLength;
+      const byte1 = data[index++];
+      let oid = (byte1 / 40 >> 0) + "." + byte1 % 40;
+      while (index < lastIndex) {
+        let value = 0;
+        while (index < lastIndex) {
+          const nextByte = data[index++];
+          value = value << 7 | nextByte & 127;
+          if (nextByte < 128) break;
+        }
+        oid += "." + value;
+      }
+      return { oid, index };
+    }
+    function expectASN1Seq(data, index) {
+      if (data[index++] !== 48) throw x509Error("non-sequence data", data);
+      return readASN1Length(data, index);
+    }
+    function signatureAlgorithmHashFromCertificate(data, index) {
+      if (index === void 0) index = 0;
+      index = expectASN1Seq(data, index).index;
+      const { length: certInfoLength, index: indexAfterCertInfoLength } = expectASN1Seq(data, index);
+      index = indexAfterCertInfoLength + certInfoLength;
+      index = expectASN1Seq(data, index).index;
+      const { oid, index: indexAfterOID } = readASN1OID(data, index);
+      switch (oid) {
+        // RSA
+        case "1.2.840.113549.1.1.4":
+          return "MD5";
+        case "1.2.840.113549.1.1.5":
+          return "SHA-1";
+        case "1.2.840.113549.1.1.11":
+          return "SHA-256";
+        case "1.2.840.113549.1.1.12":
+          return "SHA-384";
+        case "1.2.840.113549.1.1.13":
+          return "SHA-512";
+        case "1.2.840.113549.1.1.14":
+          return "SHA-224";
+        case "1.2.840.113549.1.1.15":
+          return "SHA512-224";
+        case "1.2.840.113549.1.1.16":
+          return "SHA512-256";
+        // ECDSA
+        case "1.2.840.10045.4.1":
+          return "SHA-1";
+        case "1.2.840.10045.4.3.1":
+          return "SHA-224";
+        case "1.2.840.10045.4.3.2":
+          return "SHA-256";
+        case "1.2.840.10045.4.3.3":
+          return "SHA-384";
+        case "1.2.840.10045.4.3.4":
+          return "SHA-512";
+        // RSASSA-PSS: hash is indicated separately
+        case "1.2.840.113549.1.1.10": {
+          index = indexAfterOID;
+          index = expectASN1Seq(data, index).index;
+          if (data[index++] !== 160) throw x509Error("non-tag data", data);
+          index = readASN1Length(data, index).index;
+          index = expectASN1Seq(data, index).index;
+          const { oid: hashOID } = readASN1OID(data, index);
+          switch (hashOID) {
+            // standalone hash OIDs
+            case "1.2.840.113549.2.5":
+              return "MD5";
+            case "1.3.14.3.2.26":
+              return "SHA-1";
+            case "2.16.840.1.101.3.4.2.1":
+              return "SHA-256";
+            case "2.16.840.1.101.3.4.2.2":
+              return "SHA-384";
+            case "2.16.840.1.101.3.4.2.3":
+              return "SHA-512";
+          }
+          throw x509Error("unknown hash OID " + hashOID, data);
+        }
+        // Ed25519 -- see https: return//github.com/openssl/openssl/issues/15477
+        case "1.3.101.110":
+        case "1.3.101.112":
+          return "SHA-512";
+        // Ed448 -- still not in pg 17.2 (if supported, digest would be SHAKE256 x 64 bytes)
+        case "1.3.101.111":
+        case "1.3.101.113":
+          throw x509Error("Ed448 certificate channel binding is not currently supported by Postgres");
+      }
+      throw x509Error("unknown OID " + oid, data);
+    }
+    module2.exports = { signatureAlgorithmHashFromCertificate };
+  }
+});
+
 // node_modules/pg/lib/crypto/sasl.js
 var require_sasl = __commonJS({
   "node_modules/pg/lib/crypto/sasl.js"(exports2, module2) {
     "use strict";
     var crypto2 = require_utils4();
-    function startSession(mechanisms) {
-      if (mechanisms.indexOf("SCRAM-SHA-256") === -1) {
-        throw new Error("SASL: Only mechanism SCRAM-SHA-256 is currently supported");
+    var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
+    function startSession(mechanisms, stream2) {
+      const candidates = ["SCRAM-SHA-256"];
+      if (stream2) candidates.unshift("SCRAM-SHA-256-PLUS");
+      const mechanism = candidates.find((candidate) => mechanisms.includes(candidate));
+      if (!mechanism) {
+        throw new Error("SASL: Only mechanism(s) " + candidates.join(" and ") + " are supported");
+      }
+      if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream2.getPeerCertificate !== "function") {
+        throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
       const clientNonce = crypto2.randomBytes(18).toString("base64");
+      const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream2 ? "y" : "n";
       return {
-        mechanism: "SCRAM-SHA-256",
+        mechanism,
         clientNonce,
-        response: "n,,n=*,r=" + clientNonce,
+        response: gs2Header + ",,n=*,r=" + clientNonce,
         message: "SASLInitialResponse"
       };
     }
-    async function continueSession(session, password, serverData) {
+    async function continueSession(session, password, serverData, stream2) {
       if (session.message !== "SASLInitialResponse") {
         throw new Error("SASL: Last message was not SASLInitialResponse");
       }
@@ -51440,18 +51573,27 @@ var require_sasl = __commonJS({
       } else if (sv.nonce.length === session.clientNonce.length) {
         throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: server nonce is too short");
       }
-      var clientFirstMessageBare = "n=*,r=" + session.clientNonce;
-      var serverFirstMessage = "r=" + sv.nonce + ",s=" + sv.salt + ",i=" + sv.iteration;
-      var clientFinalMessageWithoutProof = "c=biws,r=" + sv.nonce;
-      var authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
-      var saltBytes = Buffer.from(sv.salt, "base64");
-      var saltedPassword = await crypto2.deriveKey(password, saltBytes, sv.iteration);
-      var clientKey = await crypto2.hmacSha256(saltedPassword, "Client Key");
-      var storedKey = await crypto2.sha256(clientKey);
-      var clientSignature = await crypto2.hmacSha256(storedKey, authMessage);
-      var clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      var serverKey = await crypto2.hmacSha256(saltedPassword, "Server Key");
-      var serverSignatureBytes = await crypto2.hmacSha256(serverKey, authMessage);
+      const clientFirstMessageBare = "n=*,r=" + session.clientNonce;
+      const serverFirstMessage = "r=" + sv.nonce + ",s=" + sv.salt + ",i=" + sv.iteration;
+      let channelBinding = stream2 ? "eSws" : "biws";
+      if (session.mechanism === "SCRAM-SHA-256-PLUS") {
+        const peerCert = stream2.getPeerCertificate().raw;
+        let hashName = signatureAlgorithmHashFromCertificate(peerCert);
+        if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
+        const certHash = await crypto2.hashByName(hashName, peerCert);
+        const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
+        channelBinding = bindingData.toString("base64");
+      }
+      const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
+      const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
+      const saltBytes = Buffer.from(sv.salt, "base64");
+      const saltedPassword = await crypto2.deriveKey(password, saltBytes, sv.iteration);
+      const clientKey = await crypto2.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto2.sha256(clientKey);
+      const clientSignature = await crypto2.hmacSha256(storedKey, authMessage);
+      const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
+      const serverKey = await crypto2.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto2.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -51558,13 +51700,13 @@ var require_sasl = __commonJS({
 var require_type_overrides = __commonJS({
   "node_modules/pg/lib/type-overrides.js"(exports2, module2) {
     "use strict";
-    var types = require_pg_types();
-    function TypeOverrides(userTypes) {
-      this._types = userTypes || types;
+    var types2 = require_pg_types();
+    function TypeOverrides2(userTypes) {
+      this._types = userTypes || types2;
       this.text = {};
       this.binary = {};
     }
-    TypeOverrides.prototype.getOverrides = function(format) {
+    TypeOverrides2.prototype.getOverrides = function(format) {
       switch (format) {
         case "text":
           return this.text;
@@ -51574,18 +51716,18 @@ var require_type_overrides = __commonJS({
           return {};
       }
     };
-    TypeOverrides.prototype.setTypeParser = function(oid, format, parseFn) {
+    TypeOverrides2.prototype.setTypeParser = function(oid, format, parseFn) {
       if (typeof format === "function") {
         parseFn = format;
         format = "text";
       }
       this.getOverrides(format)[oid] = parseFn;
     };
-    TypeOverrides.prototype.getTypeParser = function(oid, format) {
+    TypeOverrides2.prototype.getTypeParser = function(oid, format) {
       format = format || "text";
       return this.getOverrides(format)[oid] || this._types.getTypeParser(oid, format);
     };
-    module2.exports = TypeOverrides;
+    module2.exports = TypeOverrides2;
   }
 });
 
@@ -51593,7 +51735,7 @@ var require_type_overrides = __commonJS({
 var require_pg_connection_string = __commonJS({
   "node_modules/pg-connection-string/index.js"(exports2, module2) {
     "use strict";
-    function parse2(str) {
+    function parse2(str, options = {}) {
       if (str.charAt(0) === "/") {
         const config2 = str.split(" ");
         return { host: config2[0], database: config2[1] };
@@ -51602,13 +51744,18 @@ var require_pg_connection_string = __commonJS({
       let result;
       let dummyHost = false;
       if (/ |%[^a-f0-9]|%[a-f0-9][^a-f0-9]/i.test(str)) {
-        str = encodeURI(str).replace(/\%25(\d\d)/g, "%$1");
+        str = encodeURI(str).replace(/%25(\d\d)/g, "%$1");
       }
       try {
-        result = new URL(str, "postgres://base");
-      } catch (e) {
-        result = new URL(str.replace("@/", "@___DUMMY___/"), "postgres://base");
-        dummyHost = true;
+        try {
+          result = new URL(str, "postgres://base");
+        } catch (e) {
+          result = new URL(str.replace("@/", "@___DUMMY___/"), "postgres://base");
+          dummyHost = true;
+        }
+      } catch (err) {
+        err.input && (err.input = "*****REDACTED*****");
+        throw err;
       }
       for (const entry of result.searchParams.entries()) {
         config[entry[0]] = entry[1];
@@ -51651,26 +51798,121 @@ var require_pg_connection_string = __commonJS({
       if (config.sslrootcert) {
         config.ssl.ca = fs2.readFileSync(config.sslrootcert).toString();
       }
-      switch (config.sslmode) {
-        case "disable": {
-          config.ssl = false;
-          break;
+      if (options.useLibpqCompat && config.uselibpqcompat) {
+        throw new Error("Both useLibpqCompat and uselibpqcompat are set. Please use only one of them.");
+      }
+      if (config.uselibpqcompat === "true" || options.useLibpqCompat) {
+        switch (config.sslmode) {
+          case "disable": {
+            config.ssl = false;
+            break;
+          }
+          case "prefer": {
+            config.ssl.rejectUnauthorized = false;
+            break;
+          }
+          case "require": {
+            if (config.sslrootcert) {
+              config.ssl.checkServerIdentity = function() {
+              };
+            } else {
+              config.ssl.rejectUnauthorized = false;
+            }
+            break;
+          }
+          case "verify-ca": {
+            if (!config.ssl.ca) {
+              throw new Error(
+                "SECURITY WARNING: Using sslmode=verify-ca requires specifying a CA with sslrootcert. If a public CA is used, verify-ca allows connections to a server that somebody else may have registered with the CA, making you vulnerable to Man-in-the-Middle attacks. Either specify a custom CA certificate with sslrootcert parameter or use sslmode=verify-full for proper security."
+              );
+            }
+            config.ssl.checkServerIdentity = function() {
+            };
+            break;
+          }
+          case "verify-full": {
+            break;
+          }
         }
-        case "prefer":
-        case "require":
-        case "verify-ca":
-        case "verify-full": {
-          break;
-        }
-        case "no-verify": {
-          config.ssl.rejectUnauthorized = false;
-          break;
+      } else {
+        switch (config.sslmode) {
+          case "disable": {
+            config.ssl = false;
+            break;
+          }
+          case "prefer":
+          case "require":
+          case "verify-ca":
+          case "verify-full": {
+            if (config.sslmode !== "verify-full") {
+              deprecatedSslModeWarning(config.sslmode);
+            }
+            break;
+          }
+          case "no-verify": {
+            config.ssl.rejectUnauthorized = false;
+            break;
+          }
         }
       }
       return config;
     }
+    function toConnectionOptions(sslConfig) {
+      const connectionOptions = Object.entries(sslConfig).reduce((c, [key, value]) => {
+        if (value !== void 0 && value !== null) {
+          c[key] = value;
+        }
+        return c;
+      }, {});
+      return connectionOptions;
+    }
+    function toClientConfig(config) {
+      const poolConfig = Object.entries(config).reduce((c, [key, value]) => {
+        if (key === "ssl") {
+          const sslConfig = value;
+          if (typeof sslConfig === "boolean") {
+            c[key] = sslConfig;
+          }
+          if (typeof sslConfig === "object") {
+            c[key] = toConnectionOptions(sslConfig);
+          }
+        } else if (value !== void 0 && value !== null) {
+          if (key === "port") {
+            if (value !== "") {
+              const v = parseInt(value, 10);
+              if (isNaN(v)) {
+                throw new Error(`Invalid ${key}: ${value}`);
+              }
+              c[key] = v;
+            }
+          } else {
+            c[key] = value;
+          }
+        }
+        return c;
+      }, {});
+      return poolConfig;
+    }
+    function parseIntoClientConfig(str) {
+      return toClientConfig(parse2(str));
+    }
+    function deprecatedSslModeWarning(sslmode) {
+      if (!deprecatedSslModeWarning.warned && typeof process !== "undefined" && process.emitWarning) {
+        deprecatedSslModeWarning.warned = true;
+        process.emitWarning(`SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=${sslmode}'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.`);
+      }
+    }
     module2.exports = parse2;
     parse2.parse = parse2;
+    parse2.toClientConfig = toClientConfig;
+    parse2.parseIntoClientConfig = parseIntoClientConfig;
   }
 });
 
@@ -51679,16 +51921,19 @@ var require_connection_parameters = __commonJS({
   "node_modules/pg/lib/connection-parameters.js"(exports2, module2) {
     "use strict";
     var dns = require("dns");
-    var defaults2 = require_defaults();
+    var defaults3 = require_defaults();
     var parse2 = require_pg_connection_string().parse;
     var val = function(key, config, envVar) {
+      if (config[key]) {
+        return config[key];
+      }
       if (envVar === void 0) {
         envVar = process.env["PG" + key.toUpperCase()];
       } else if (envVar === false) {
       } else {
         envVar = process.env[envVar];
       }
-      return config[key] || envVar || defaults2[key];
+      return envVar || defaults3[key];
     };
     var readSSLConfigFromEnvironment = function() {
       switch (process.env.PGSSLMODE) {
@@ -51702,13 +51947,13 @@ var require_connection_parameters = __commonJS({
         case "no-verify":
           return { rejectUnauthorized: false };
       }
-      return defaults2.ssl;
+      return defaults3.ssl;
     };
     var quoteParamValue = function(value) {
       return "'" + ("" + value).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
     };
     var add = function(params, config, paramName) {
-      var value = config[paramName];
+      const value = config[paramName];
       if (value !== void 0 && value !== null) {
         params.push(paramName + "=" + quoteParamValue(value));
       }
@@ -51772,7 +52017,7 @@ var require_connection_parameters = __commonJS({
         }
       }
       getLibpqConnectionString(cb) {
-        var params = [];
+        const params = [];
         add(params, this, "user");
         add(params, this, "password");
         add(params, this, "port");
@@ -51780,7 +52025,7 @@ var require_connection_parameters = __commonJS({
         add(params, this, "fallback_application_name");
         add(params, this, "connect_timeout");
         add(params, this, "options");
-        var ssl = typeof this.ssl === "object" ? this.ssl : this.ssl ? { sslmode: this.ssl } : {};
+        const ssl = typeof this.ssl === "object" ? this.ssl : this.ssl ? { sslmode: this.ssl } : {};
         add(params, ssl, "sslmode");
         add(params, ssl, "sslca");
         add(params, ssl, "sslkey");
@@ -51816,17 +52061,17 @@ var require_connection_parameters = __commonJS({
 var require_result = __commonJS({
   "node_modules/pg/lib/result.js"(exports2, module2) {
     "use strict";
-    var types = require_pg_types();
+    var types2 = require_pg_types();
     var matchRegexp = /^([A-Za-z]+)(?: (\d+))?(?: (\d+))?/;
-    var Result = class {
-      constructor(rowMode, types2) {
+    var Result2 = class {
+      constructor(rowMode, types3) {
         this.command = null;
         this.rowCount = null;
         this.oid = null;
         this.rows = [];
         this.fields = [];
         this._parsers = void 0;
-        this._types = types2;
+        this._types = types3;
         this.RowCtor = null;
         this.rowAsArray = rowMode === "array";
         if (this.rowAsArray) {
@@ -51836,7 +52081,7 @@ var require_result = __commonJS({
       }
       // adds a command complete message
       addCommandComplete(msg) {
-        var match;
+        let match;
         if (msg.text) {
           match = matchRegexp.exec(msg.text);
         } else {
@@ -51853,9 +52098,9 @@ var require_result = __commonJS({
         }
       }
       _parseRowAsArray(rowData) {
-        var row = new Array(rowData.length);
-        for (var i = 0, len = rowData.length; i < len; i++) {
-          var rawValue = rowData[i];
+        const row = new Array(rowData.length);
+        for (let i = 0, len = rowData.length; i < len; i++) {
+          const rawValue = rowData[i];
           if (rawValue !== null) {
             row[i] = this._parsers[i](rawValue);
           } else {
@@ -51865,12 +52110,13 @@ var require_result = __commonJS({
         return row;
       }
       parseRow(rowData) {
-        var row = { ...this._prebuiltEmptyResultObject };
-        for (var i = 0, len = rowData.length; i < len; i++) {
-          var rawValue = rowData[i];
-          var field = this.fields[i].name;
+        const row = { ...this._prebuiltEmptyResultObject };
+        for (let i = 0, len = rowData.length; i < len; i++) {
+          const rawValue = rowData[i];
+          const field = this.fields[i].name;
           if (rawValue !== null) {
-            row[field] = this._parsers[i](rawValue);
+            const v = this.fields[i].format === "binary" ? Buffer.from(rawValue) : rawValue;
+            row[field] = this._parsers[i](v);
           } else {
             row[field] = null;
           }
@@ -51885,20 +52131,20 @@ var require_result = __commonJS({
         if (this.fields.length) {
           this._parsers = new Array(fieldDescriptions.length);
         }
-        var row = {};
-        for (var i = 0; i < fieldDescriptions.length; i++) {
-          var desc = fieldDescriptions[i];
+        const row = {};
+        for (let i = 0; i < fieldDescriptions.length; i++) {
+          const desc = fieldDescriptions[i];
           row[desc.name] = null;
           if (this._types) {
             this._parsers[i] = this._types.getTypeParser(desc.dataTypeID, desc.format || "text");
           } else {
-            this._parsers[i] = types.getTypeParser(desc.dataTypeID, desc.format || "text");
+            this._parsers[i] = types2.getTypeParser(desc.dataTypeID, desc.format || "text");
           }
         }
         this._prebuiltEmptyResultObject = { ...row };
       }
     };
-    module2.exports = Result;
+    module2.exports = Result2;
   }
 });
 
@@ -51907,9 +52153,9 @@ var require_query = __commonJS({
   "node_modules/pg/lib/query.js"(exports2, module2) {
     "use strict";
     var { EventEmitter } = require("events");
-    var Result = require_result();
+    var Result2 = require_result();
     var utils = require_utils3();
-    var Query = class extends EventEmitter {
+    var Query2 = class extends EventEmitter {
       constructor(config, values, callback) {
         super();
         config = utils.normalizeQueryConfig(config, values, callback);
@@ -51918,6 +52164,7 @@ var require_query = __commonJS({
         this.rows = config.rows;
         this.types = config.types;
         this.name = config.name;
+        this.queryMode = config.queryMode;
         this.binary = config.binary;
         this.portal = config.portal || "";
         this.callback = config.callback;
@@ -51925,11 +52172,14 @@ var require_query = __commonJS({
         if (process.domain && config.callback) {
           this.callback = process.domain.bind(config.callback);
         }
-        this._result = new Result(this._rowMode, this.types);
+        this._result = new Result2(this._rowMode, this.types);
         this._results = this._result;
         this._canceledDueToError = false;
       }
       requiresPreparation() {
+        if (this.queryMode === "extended") {
+          return true;
+        }
         if (this.name) {
           return true;
         }
@@ -51949,7 +52199,7 @@ var require_query = __commonJS({
           if (!Array.isArray(this._results)) {
             this._results = [this._result];
           }
-          this._result = new Result(this._rowMode, this.types);
+          this._result = new Result2(this._rowMode, this._result._types);
           this._results.push(this._result);
         }
       }
@@ -51987,7 +52237,7 @@ var require_query = __commonJS({
       // if a named prepared statement is created with empty query text
       // the backend will send an emptyQuery message but *not* a command complete message
       // since we pipeline sync immediately after execute we don't need to do anything here
-      // unless we have rows specified, in which case we did not pipeline the intial sync call
+      // unless we have rows specified, in which case we did not pipeline the initial sync call
       handleEmptyQuery(connection) {
         if (this.rows) {
           connection.sync();
@@ -52030,7 +52280,12 @@ var require_query = __commonJS({
           return new Error("Query values must be an array");
         }
         if (this.requiresPreparation()) {
-          this.prepare(connection);
+          connection.stream.cork && connection.stream.cork();
+          try {
+            this.prepare(connection);
+          } finally {
+            connection.stream.uncork && connection.stream.uncork();
+          }
         } else {
           connection.query(this.text);
         }
@@ -52083,17 +52338,16 @@ var require_query = __commonJS({
       handleCopyInResponse(connection) {
         connection.sendCopyFail("No source stream defined");
       }
-      // eslint-disable-next-line no-unused-vars
       handleCopyData(msg, connection) {
       }
     };
-    module2.exports = Query;
+    module2.exports = Query2;
   }
 });
 
-// node_modules/pg-protocol/dist/messages.js
+// node_modules/pg/node_modules/pg-protocol/dist/messages.js
 var require_messages = __commonJS({
-  "node_modules/pg-protocol/dist/messages.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/messages.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.NoticeMessage = exports2.DataRowMessage = exports2.CommandCompleteMessage = exports2.ReadyForQueryMessage = exports2.NotificationResponseMessage = exports2.BackendKeyDataMessage = exports2.AuthenticationMD5Password = exports2.ParameterStatusMessage = exports2.ParameterDescriptionMessage = exports2.RowDescriptionMessage = exports2.Field = exports2.CopyResponse = exports2.CopyDataMessage = exports2.DatabaseError = exports2.copyDone = exports2.emptyQuery = exports2.replicationStart = exports2.portalSuspended = exports2.noData = exports2.closeComplete = exports2.bindComplete = exports2.parseComplete = void 0;
@@ -52256,9 +52510,9 @@ var require_messages = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/buffer-writer.js
+// node_modules/pg/node_modules/pg-protocol/dist/buffer-writer.js
 var require_buffer_writer = __commonJS({
-  "node_modules/pg-protocol/dist/buffer-writer.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/buffer-writer.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Writer = void 0;
@@ -52270,10 +52524,10 @@ var require_buffer_writer = __commonJS({
         this.buffer = Buffer.allocUnsafe(size2);
       }
       ensure(size2) {
-        var remaining = this.buffer.length - this.offset;
+        const remaining = this.buffer.length - this.offset;
         if (remaining < size2) {
-          var oldBuffer = this.buffer;
-          var newSize = oldBuffer.length + (oldBuffer.length >> 1) + size2;
+          const oldBuffer = this.buffer;
+          const newSize = oldBuffer.length + (oldBuffer.length >> 1) + size2;
           this.buffer = Buffer.allocUnsafe(newSize);
           oldBuffer.copy(this.buffer);
         }
@@ -52296,7 +52550,7 @@ var require_buffer_writer = __commonJS({
         if (!string) {
           this.ensure(1);
         } else {
-          var len = Buffer.byteLength(string);
+          const len = Buffer.byteLength(string);
           this.ensure(len + 1);
           this.buffer.write(string, this.offset, "utf-8");
           this.offset += len;
@@ -52305,7 +52559,7 @@ var require_buffer_writer = __commonJS({
         return this;
       }
       addString(string = "") {
-        var len = Buffer.byteLength(string);
+        const len = Buffer.byteLength(string);
         this.ensure(len);
         this.buffer.write(string, this.offset);
         this.offset += len;
@@ -52326,7 +52580,7 @@ var require_buffer_writer = __commonJS({
         return this.buffer.slice(code ? 0 : 5, this.offset);
       }
       flush(code) {
-        var result = this.join(code);
+        const result = this.join(code);
         this.offset = 5;
         this.headerPosition = 0;
         this.buffer = Buffer.allocUnsafe(this.size);
@@ -52337,9 +52591,9 @@ var require_buffer_writer = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/serializer.js
+// node_modules/pg/node_modules/pg-protocol/dist/serializer.js
 var require_serializer = __commonJS({
-  "node_modules/pg-protocol/dist/serializer.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/serializer.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.serialize = void 0;
@@ -52351,8 +52605,8 @@ var require_serializer = __commonJS({
         writer.addCString(key).addCString(opts[key]);
       }
       writer.addCString("client_encoding").addCString("UTF8");
-      var bodyBuffer = writer.addCString("").flush();
-      var length = bodyBuffer.length + 4;
+      const bodyBuffer = writer.addCString("").flush();
+      const length = bodyBuffer.length + 4;
       return new buffer_writer_1.Writer().addInt32(length).add(bodyBuffer).flush();
     };
     var requestSsl = () => {
@@ -52394,11 +52648,11 @@ var require_serializer = __commonJS({
         console.error("You supplied %s (%s)", name, name.length);
         console.error("This can cause conflicts and silent errors executing queries");
       }
-      const types = query2.types || emptyArray;
-      var len = types.length;
-      var buffer = writer.addCString(name).addCString(query2.text).addInt16(len);
-      for (var i = 0; i < len; i++) {
-        buffer.addInt32(types[i]);
+      const types2 = query2.types || emptyArray;
+      const len = types2.length;
+      const buffer = writer.addCString(name).addCString(query2.text).addInt16(len);
+      for (let i = 0; i < len; i++) {
+        buffer.addInt32(types2[i]);
       }
       return writer.flush(
         80
@@ -52443,6 +52697,7 @@ var require_serializer = __commonJS({
       writeValues(values, config.valueMapper);
       writer.addInt16(len);
       writer.add(paramWriter.flush());
+      writer.addInt16(1);
       writer.addInt16(
         binary ? 1 : 0
         /* ParamType.STRING */
@@ -52553,17 +52808,16 @@ var require_serializer = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/buffer-reader.js
+// node_modules/pg/node_modules/pg-protocol/dist/buffer-reader.js
 var require_buffer_reader = __commonJS({
-  "node_modules/pg-protocol/dist/buffer-reader.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/buffer-reader.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.BufferReader = void 0;
-    var emptyBuffer = Buffer.allocUnsafe(0);
     var BufferReader = class {
       constructor(offset = 0) {
         this.offset = offset;
-        this.buffer = emptyBuffer;
+        this.buffer = Buffer.allocUnsafe(0);
         this.encoding = "utf-8";
       }
       setBuffer(offset, buffer) {
@@ -52582,6 +52836,11 @@ var require_buffer_reader = __commonJS({
       }
       int32() {
         const result = this.buffer.readInt32BE(this.offset);
+        this.offset += 4;
+        return result;
+      }
+      uint32() {
+        const result = this.buffer.readUInt32BE(this.offset);
         this.offset += 4;
         return result;
       }
@@ -52608,9 +52867,9 @@ var require_buffer_reader = __commonJS({
   }
 });
 
-// node_modules/pg-protocol/dist/parser.js
+// node_modules/pg/node_modules/pg-protocol/dist/parser.js
 var require_parser = __commonJS({
-  "node_modules/pg-protocol/dist/parser.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/parser.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Parser = void 0;
@@ -52619,6 +52878,7 @@ var require_parser = __commonJS({
     var CODE_LENGTH = 1;
     var LEN_LENGTH = 4;
     var HEADER_LENGTH = CODE_LENGTH + LEN_LENGTH;
+    var LATEINIT_LENGTH = -1;
     var emptyBuffer = Buffer.allocUnsafe(0);
     var Parser = class {
       constructor(opts) {
@@ -52684,224 +52944,239 @@ var require_parser = __commonJS({
         }
       }
       handlePacket(offset, code, length, bytes2) {
+        const { reader } = this;
+        reader.setBuffer(offset, bytes2);
+        let message;
         switch (code) {
           case 50:
-            return messages_1.bindComplete;
+            message = messages_1.bindComplete;
+            break;
           case 49:
-            return messages_1.parseComplete;
+            message = messages_1.parseComplete;
+            break;
           case 51:
-            return messages_1.closeComplete;
+            message = messages_1.closeComplete;
+            break;
           case 110:
-            return messages_1.noData;
+            message = messages_1.noData;
+            break;
           case 115:
-            return messages_1.portalSuspended;
+            message = messages_1.portalSuspended;
+            break;
           case 99:
-            return messages_1.copyDone;
+            message = messages_1.copyDone;
+            break;
           case 87:
-            return messages_1.replicationStart;
+            message = messages_1.replicationStart;
+            break;
           case 73:
-            return messages_1.emptyQuery;
+            message = messages_1.emptyQuery;
+            break;
           case 68:
-            return this.parseDataRowMessage(offset, length, bytes2);
+            message = parseDataRowMessage(reader);
+            break;
           case 67:
-            return this.parseCommandCompleteMessage(offset, length, bytes2);
+            message = parseCommandCompleteMessage(reader);
+            break;
           case 90:
-            return this.parseReadyForQueryMessage(offset, length, bytes2);
+            message = parseReadyForQueryMessage(reader);
+            break;
           case 65:
-            return this.parseNotificationMessage(offset, length, bytes2);
+            message = parseNotificationMessage(reader);
+            break;
           case 82:
-            return this.parseAuthenticationResponse(offset, length, bytes2);
+            message = parseAuthenticationResponse(reader, length);
+            break;
           case 83:
-            return this.parseParameterStatusMessage(offset, length, bytes2);
+            message = parseParameterStatusMessage(reader);
+            break;
           case 75:
-            return this.parseBackendKeyData(offset, length, bytes2);
+            message = parseBackendKeyData(reader);
+            break;
           case 69:
-            return this.parseErrorMessage(offset, length, bytes2, "error");
+            message = parseErrorMessage(reader, "error");
+            break;
           case 78:
-            return this.parseErrorMessage(offset, length, bytes2, "notice");
+            message = parseErrorMessage(reader, "notice");
+            break;
           case 84:
-            return this.parseRowDescriptionMessage(offset, length, bytes2);
+            message = parseRowDescriptionMessage(reader);
+            break;
           case 116:
-            return this.parseParameterDescriptionMessage(offset, length, bytes2);
+            message = parseParameterDescriptionMessage(reader);
+            break;
           case 71:
-            return this.parseCopyInMessage(offset, length, bytes2);
+            message = parseCopyInMessage(reader);
+            break;
           case 72:
-            return this.parseCopyOutMessage(offset, length, bytes2);
+            message = parseCopyOutMessage(reader);
+            break;
           case 100:
-            return this.parseCopyData(offset, length, bytes2);
+            message = parseCopyData(reader, length);
+            break;
           default:
             return new messages_1.DatabaseError("received invalid response: " + code.toString(16), length, "error");
         }
-      }
-      parseReadyForQueryMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const status = this.reader.string(1);
-        return new messages_1.ReadyForQueryMessage(length, status);
-      }
-      parseCommandCompleteMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const text = this.reader.cstring();
-        return new messages_1.CommandCompleteMessage(length, text);
-      }
-      parseCopyData(offset, length, bytes2) {
-        const chunk = bytes2.slice(offset, offset + (length - 4));
-        return new messages_1.CopyDataMessage(length, chunk);
-      }
-      parseCopyInMessage(offset, length, bytes2) {
-        return this.parseCopyMessage(offset, length, bytes2, "copyInResponse");
-      }
-      parseCopyOutMessage(offset, length, bytes2) {
-        return this.parseCopyMessage(offset, length, bytes2, "copyOutResponse");
-      }
-      parseCopyMessage(offset, length, bytes2, messageName) {
-        this.reader.setBuffer(offset, bytes2);
-        const isBinary = this.reader.byte() !== 0;
-        const columnCount = this.reader.int16();
-        const message = new messages_1.CopyResponse(length, messageName, isBinary, columnCount);
-        for (let i = 0; i < columnCount; i++) {
-          message.columnTypes[i] = this.reader.int16();
-        }
-        return message;
-      }
-      parseNotificationMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const processId = this.reader.int32();
-        const channel = this.reader.cstring();
-        const payload = this.reader.cstring();
-        return new messages_1.NotificationResponseMessage(length, processId, channel, payload);
-      }
-      parseRowDescriptionMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const fieldCount = this.reader.int16();
-        const message = new messages_1.RowDescriptionMessage(length, fieldCount);
-        for (let i = 0; i < fieldCount; i++) {
-          message.fields[i] = this.parseField();
-        }
-        return message;
-      }
-      parseField() {
-        const name = this.reader.cstring();
-        const tableID = this.reader.int32();
-        const columnID = this.reader.int16();
-        const dataTypeID = this.reader.int32();
-        const dataTypeSize = this.reader.int16();
-        const dataTypeModifier = this.reader.int32();
-        const mode = this.reader.int16() === 0 ? "text" : "binary";
-        return new messages_1.Field(name, tableID, columnID, dataTypeID, dataTypeSize, dataTypeModifier, mode);
-      }
-      parseParameterDescriptionMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const parameterCount = this.reader.int16();
-        const message = new messages_1.ParameterDescriptionMessage(length, parameterCount);
-        for (let i = 0; i < parameterCount; i++) {
-          message.dataTypeIDs[i] = this.reader.int32();
-        }
-        return message;
-      }
-      parseDataRowMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const fieldCount = this.reader.int16();
-        const fields = new Array(fieldCount);
-        for (let i = 0; i < fieldCount; i++) {
-          const len = this.reader.int32();
-          fields[i] = len === -1 ? null : this.reader.string(len);
-        }
-        return new messages_1.DataRowMessage(length, fields);
-      }
-      parseParameterStatusMessage(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const name = this.reader.cstring();
-        const value = this.reader.cstring();
-        return new messages_1.ParameterStatusMessage(length, name, value);
-      }
-      parseBackendKeyData(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const processID = this.reader.int32();
-        const secretKey = this.reader.int32();
-        return new messages_1.BackendKeyDataMessage(length, processID, secretKey);
-      }
-      parseAuthenticationResponse(offset, length, bytes2) {
-        this.reader.setBuffer(offset, bytes2);
-        const code = this.reader.int32();
-        const message = {
-          name: "authenticationOk",
-          length
-        };
-        switch (code) {
-          case 0:
-            break;
-          case 3:
-            if (message.length === 8) {
-              message.name = "authenticationCleartextPassword";
-            }
-            break;
-          case 5:
-            if (message.length === 12) {
-              message.name = "authenticationMD5Password";
-              const salt = this.reader.bytes(4);
-              return new messages_1.AuthenticationMD5Password(length, salt);
-            }
-            break;
-          case 10:
-            message.name = "authenticationSASL";
-            message.mechanisms = [];
-            let mechanism;
-            do {
-              mechanism = this.reader.cstring();
-              if (mechanism) {
-                message.mechanisms.push(mechanism);
-              }
-            } while (mechanism);
-            break;
-          case 11:
-            message.name = "authenticationSASLContinue";
-            message.data = this.reader.string(length - 8);
-            break;
-          case 12:
-            message.name = "authenticationSASLFinal";
-            message.data = this.reader.string(length - 8);
-            break;
-          default:
-            throw new Error("Unknown authenticationOk message type " + code);
-        }
-        return message;
-      }
-      parseErrorMessage(offset, length, bytes2, name) {
-        this.reader.setBuffer(offset, bytes2);
-        const fields = {};
-        let fieldType = this.reader.string(1);
-        while (fieldType !== "\0") {
-          fields[fieldType] = this.reader.cstring();
-          fieldType = this.reader.string(1);
-        }
-        const messageValue = fields.M;
-        const message = name === "notice" ? new messages_1.NoticeMessage(length, messageValue) : new messages_1.DatabaseError(messageValue, length, name);
-        message.severity = fields.S;
-        message.code = fields.C;
-        message.detail = fields.D;
-        message.hint = fields.H;
-        message.position = fields.P;
-        message.internalPosition = fields.p;
-        message.internalQuery = fields.q;
-        message.where = fields.W;
-        message.schema = fields.s;
-        message.table = fields.t;
-        message.column = fields.c;
-        message.dataType = fields.d;
-        message.constraint = fields.n;
-        message.file = fields.F;
-        message.line = fields.L;
-        message.routine = fields.R;
+        reader.setBuffer(0, emptyBuffer);
+        message.length = length;
         return message;
       }
     };
     exports2.Parser = Parser;
+    var parseReadyForQueryMessage = (reader) => {
+      const status = reader.string(1);
+      return new messages_1.ReadyForQueryMessage(LATEINIT_LENGTH, status);
+    };
+    var parseCommandCompleteMessage = (reader) => {
+      const text = reader.cstring();
+      return new messages_1.CommandCompleteMessage(LATEINIT_LENGTH, text);
+    };
+    var parseCopyData = (reader, length) => {
+      const chunk = reader.bytes(length - 4);
+      return new messages_1.CopyDataMessage(LATEINIT_LENGTH, chunk);
+    };
+    var parseCopyInMessage = (reader) => parseCopyMessage(reader, "copyInResponse");
+    var parseCopyOutMessage = (reader) => parseCopyMessage(reader, "copyOutResponse");
+    var parseCopyMessage = (reader, messageName) => {
+      const isBinary = reader.byte() !== 0;
+      const columnCount = reader.int16();
+      const message = new messages_1.CopyResponse(LATEINIT_LENGTH, messageName, isBinary, columnCount);
+      for (let i = 0; i < columnCount; i++) {
+        message.columnTypes[i] = reader.int16();
+      }
+      return message;
+    };
+    var parseNotificationMessage = (reader) => {
+      const processId = reader.int32();
+      const channel = reader.cstring();
+      const payload = reader.cstring();
+      return new messages_1.NotificationResponseMessage(LATEINIT_LENGTH, processId, channel, payload);
+    };
+    var parseRowDescriptionMessage = (reader) => {
+      const fieldCount = reader.int16();
+      const message = new messages_1.RowDescriptionMessage(LATEINIT_LENGTH, fieldCount);
+      for (let i = 0; i < fieldCount; i++) {
+        message.fields[i] = parseField(reader);
+      }
+      return message;
+    };
+    var parseField = (reader) => {
+      const name = reader.cstring();
+      const tableID = reader.uint32();
+      const columnID = reader.int16();
+      const dataTypeID = reader.uint32();
+      const dataTypeSize = reader.int16();
+      const dataTypeModifier = reader.int32();
+      const mode = reader.int16() === 0 ? "text" : "binary";
+      return new messages_1.Field(name, tableID, columnID, dataTypeID, dataTypeSize, dataTypeModifier, mode);
+    };
+    var parseParameterDescriptionMessage = (reader) => {
+      const parameterCount = reader.int16();
+      const message = new messages_1.ParameterDescriptionMessage(LATEINIT_LENGTH, parameterCount);
+      for (let i = 0; i < parameterCount; i++) {
+        message.dataTypeIDs[i] = reader.int32();
+      }
+      return message;
+    };
+    var parseDataRowMessage = (reader) => {
+      const fieldCount = reader.int16();
+      const fields = new Array(fieldCount);
+      for (let i = 0; i < fieldCount; i++) {
+        const len = reader.int32();
+        fields[i] = len === -1 ? null : reader.string(len);
+      }
+      return new messages_1.DataRowMessage(LATEINIT_LENGTH, fields);
+    };
+    var parseParameterStatusMessage = (reader) => {
+      const name = reader.cstring();
+      const value = reader.cstring();
+      return new messages_1.ParameterStatusMessage(LATEINIT_LENGTH, name, value);
+    };
+    var parseBackendKeyData = (reader) => {
+      const processID = reader.int32();
+      const secretKey = reader.int32();
+      return new messages_1.BackendKeyDataMessage(LATEINIT_LENGTH, processID, secretKey);
+    };
+    var parseAuthenticationResponse = (reader, length) => {
+      const code = reader.int32();
+      const message = {
+        name: "authenticationOk",
+        length
+      };
+      switch (code) {
+        case 0:
+          break;
+        case 3:
+          if (message.length === 8) {
+            message.name = "authenticationCleartextPassword";
+          }
+          break;
+        case 5:
+          if (message.length === 12) {
+            message.name = "authenticationMD5Password";
+            const salt = reader.bytes(4);
+            return new messages_1.AuthenticationMD5Password(LATEINIT_LENGTH, salt);
+          }
+          break;
+        case 10:
+          {
+            message.name = "authenticationSASL";
+            message.mechanisms = [];
+            let mechanism;
+            do {
+              mechanism = reader.cstring();
+              if (mechanism) {
+                message.mechanisms.push(mechanism);
+              }
+            } while (mechanism);
+          }
+          break;
+        case 11:
+          message.name = "authenticationSASLContinue";
+          message.data = reader.string(length - 8);
+          break;
+        case 12:
+          message.name = "authenticationSASLFinal";
+          message.data = reader.string(length - 8);
+          break;
+        default:
+          throw new Error("Unknown authenticationOk message type " + code);
+      }
+      return message;
+    };
+    var parseErrorMessage = (reader, name) => {
+      const fields = {};
+      let fieldType = reader.string(1);
+      while (fieldType !== "\0") {
+        fields[fieldType] = reader.cstring();
+        fieldType = reader.string(1);
+      }
+      const messageValue = fields.M;
+      const message = name === "notice" ? new messages_1.NoticeMessage(LATEINIT_LENGTH, messageValue) : new messages_1.DatabaseError(messageValue, LATEINIT_LENGTH, name);
+      message.severity = fields.S;
+      message.code = fields.C;
+      message.detail = fields.D;
+      message.hint = fields.H;
+      message.position = fields.P;
+      message.internalPosition = fields.p;
+      message.internalQuery = fields.q;
+      message.where = fields.W;
+      message.schema = fields.s;
+      message.table = fields.t;
+      message.column = fields.c;
+      message.dataType = fields.d;
+      message.constraint = fields.n;
+      message.file = fields.F;
+      message.line = fields.L;
+      message.routine = fields.R;
+      return message;
+    };
   }
 });
 
-// node_modules/pg-protocol/dist/index.js
+// node_modules/pg/node_modules/pg-protocol/dist/index.js
 var require_dist = __commonJS({
-  "node_modules/pg-protocol/dist/index.js"(exports2) {
+  "node_modules/pg/node_modules/pg-protocol/dist/index.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.DatabaseError = exports2.serialize = exports2.parse = void 0;
@@ -52924,38 +53199,77 @@ var require_dist = __commonJS({
 });
 
 // node_modules/pg-cloudflare/dist/empty.js
-var empty_exports = {};
-__export(empty_exports, {
-  default: () => empty_default
-});
-var empty_default;
-var init_empty = __esm({
-  "node_modules/pg-cloudflare/dist/empty.js"() {
-    empty_default = {};
+var require_empty = __commonJS({
+  "node_modules/pg-cloudflare/dist/empty.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.default = {};
   }
 });
 
 // node_modules/pg/lib/stream.js
 var require_stream2 = __commonJS({
   "node_modules/pg/lib/stream.js"(exports2, module2) {
-    module2.exports.getStream = function getStream(ssl) {
-      const net = require("net");
-      if (typeof net.Socket === "function") {
+    var { getStream, getSecureStream } = getStreamFuncs();
+    module2.exports = {
+      /**
+       * Get a socket stream compatible with the current runtime environment.
+       * @returns {Duplex}
+       */
+      getStream,
+      /**
+       * Get a TLS secured socket, compatible with the current environment,
+       * using the socket and other settings given in `options`.
+       * @returns {Duplex}
+       */
+      getSecureStream
+    };
+    function getNodejsStreamFuncs() {
+      function getStream2(ssl) {
+        const net = require("net");
         return new net.Socket();
-      } else {
-        const { CloudflareSocket } = (init_empty(), __toCommonJS(empty_exports));
+      }
+      function getSecureStream2(options) {
+        const tls = require("tls");
+        return tls.connect(options);
+      }
+      return {
+        getStream: getStream2,
+        getSecureStream: getSecureStream2
+      };
+    }
+    function getCloudflareStreamFuncs() {
+      function getStream2(ssl) {
+        const { CloudflareSocket } = require_empty();
         return new CloudflareSocket(ssl);
       }
-    };
-    module2.exports.getSecureStream = function getSecureStream(options) {
-      var tls = require("tls");
-      if (tls.connect) {
-        return tls.connect(options);
-      } else {
+      function getSecureStream2(options) {
         options.socket.startTls(options);
         return options.socket;
       }
-    };
+      return {
+        getStream: getStream2,
+        getSecureStream: getSecureStream2
+      };
+    }
+    function isCloudflareRuntime() {
+      if (typeof navigator === "object" && navigator !== null && typeof navigator.userAgent === "string") {
+        return navigator.userAgent === "Cloudflare-Workers";
+      }
+      if (typeof Response === "function") {
+        const resp = new Response(null, { cf: { thing: true } });
+        if (typeof resp.cf === "object" && resp.cf !== null && resp.cf.thing) {
+          return true;
+        }
+      }
+      return false;
+    }
+    function getStreamFuncs() {
+      if (isCloudflareRuntime()) {
+        return getCloudflareStreamFuncs();
+      }
+      return getNodejsStreamFuncs();
+    }
   }
 });
 
@@ -52963,14 +53277,13 @@ var require_stream2 = __commonJS({
 var require_connection3 = __commonJS({
   "node_modules/pg/lib/connection.js"(exports2, module2) {
     "use strict";
-    var net = require("net");
     var EventEmitter = require("events").EventEmitter;
     var { parse: parse2, serialize } = require_dist();
     var { getStream, getSecureStream } = require_stream2();
     var flushBuffer = serialize.flush();
     var syncBuffer = serialize.sync();
     var endBuffer = serialize.end();
-    var Connection = class extends EventEmitter {
+    var Connection2 = class extends EventEmitter {
       constructor(config) {
         super();
         config = config || {};
@@ -52980,12 +53293,11 @@ var require_connection3 = __commonJS({
         }
         this._keepAlive = config.keepAlive;
         this._keepAliveInitialDelayMillis = config.keepAliveInitialDelayMillis;
-        this.lastBuffer = false;
         this.parsedStatements = {};
         this.ssl = config.ssl || false;
         this._ending = false;
         this._emitMessage = false;
-        var self2 = this;
+        const self2 = this;
         this.on("newListener", function(eventName) {
           if (eventName === "message") {
             self2._emitMessage = true;
@@ -52993,7 +53305,7 @@ var require_connection3 = __commonJS({
         });
       }
       connect(port, host) {
-        var self2 = this;
+        const self2 = this;
         this._connecting = true;
         this.stream.setNoDelay(true);
         this.stream.connect(port, host);
@@ -53017,7 +53329,7 @@ var require_connection3 = __commonJS({
           return this.attachListeners(this.stream);
         }
         this.stream.once("data", function(buffer) {
-          var responseCode = buffer.toString("utf8");
+          const responseCode = buffer.toString("utf8");
           switch (responseCode) {
             case "S":
               break;
@@ -53037,8 +53349,8 @@ var require_connection3 = __commonJS({
               options.key = self2.ssl.key;
             }
           }
-          var net2 = require("net");
-          if (net2.isIP && net2.isIP(host) === 0) {
+          const net = require("net");
+          if (net.isIP && net.isIP(host) === 0) {
             options.servername = host;
           }
           try {
@@ -53053,7 +53365,7 @@ var require_connection3 = __commonJS({
       }
       attachListeners(stream2) {
         parse2(stream2, (msg) => {
-          var eventName = msg.name === "error" ? "errorMessage" : msg.name;
+          const eventName = msg.name === "error" ? "errorMessage" : msg.name;
           if (this._emitMessage) {
             this.emit("message", msg);
           }
@@ -53140,7 +53452,7 @@ var require_connection3 = __commonJS({
         this._send(serialize.copyFail(msg));
       }
     };
-    module2.exports = Connection;
+    module2.exports = Connection2;
   }
 });
 
@@ -53440,17 +53752,42 @@ var require_lib3 = __commonJS({
 // node_modules/pg/lib/client.js
 var require_client3 = __commonJS({
   "node_modules/pg/lib/client.js"(exports2, module2) {
-    "use strict";
     var EventEmitter = require("events").EventEmitter;
     var utils = require_utils3();
+    var nodeUtils = require("util");
     var sasl = require_sasl();
-    var TypeOverrides = require_type_overrides();
+    var TypeOverrides2 = require_type_overrides();
     var ConnectionParameters = require_connection_parameters();
-    var Query = require_query();
-    var defaults2 = require_defaults();
-    var Connection = require_connection3();
+    var Query2 = require_query();
+    var defaults3 = require_defaults();
+    var Connection2 = require_connection3();
     var crypto2 = require_utils4();
-    var Client = class extends EventEmitter {
+    var activeQueryDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "Client.activeQuery is deprecated and will be removed in pg@9.0"
+    );
+    var queryQueueDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "Client.queryQueue is deprecated and will be removed in pg@9.0."
+    );
+    var pgPassDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "pgpass support is deprecated and will be removed in pg@9.0. You can provide an async function as the password property to the Client/Pool constructor that returns a password instead. Within this function you can call the pgpass module in your own code."
+    );
+    var byoPromiseDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "Passing a custom Promise implementation to the Client/Pool constructor is deprecated and will be removed in pg@9.0."
+    );
+    var queryQueueLengthDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
+    );
+    var Client2 = class extends EventEmitter {
       constructor(config) {
         super();
         this.connectionParameters = new ConnectionParameters(config);
@@ -53465,24 +53802,29 @@ var require_client3 = __commonJS({
           value: this.connectionParameters.password
         });
         this.replication = this.connectionParameters.replication;
-        var c = config || {};
+        const c = config || {};
+        if (c.Promise) {
+          byoPromiseDeprecationNotice();
+        }
         this._Promise = c.Promise || global.Promise;
-        this._types = new TypeOverrides(c.types);
+        this._types = new TypeOverrides2(c.types);
         this._ending = false;
         this._ended = false;
         this._connecting = false;
         this._connected = false;
         this._connectionError = false;
         this._queryable = true;
-        this.connection = c.connection || new Connection({
+        this._activeQuery = null;
+        this.enableChannelBinding = Boolean(c.enableChannelBinding);
+        this.connection = c.connection || new Connection2({
           stream: c.stream,
           ssl: this.connectionParameters.ssl,
           keepAlive: c.keepAlive || false,
           keepAliveInitialDelayMillis: c.keepAliveInitialDelayMillis || 0,
           encoding: this.connectionParameters.client_encoding || "utf8"
         });
-        this.queryQueue = [];
-        this.binary = c.binary || defaults2.binary;
+        this._queryQueue = [];
+        this.binary = c.binary || defaults3.binary;
         this.processID = null;
         this.secretKey = null;
         this.ssl = this.connectionParameters.ssl || false;
@@ -53493,22 +53835,34 @@ var require_client3 = __commonJS({
         }
         this._connectionTimeoutMillis = c.connectionTimeoutMillis || 0;
       }
+      get activeQuery() {
+        activeQueryDeprecationNotice();
+        return this._activeQuery;
+      }
+      set activeQuery(val) {
+        activeQueryDeprecationNotice();
+        this._activeQuery = val;
+      }
+      _getActiveQuery() {
+        return this._activeQuery;
+      }
       _errorAllQueries(err) {
         const enqueueError = (query) => {
           process.nextTick(() => {
             query.handleError(err, this.connection);
           });
         };
-        if (this.activeQuery) {
-          enqueueError(this.activeQuery);
-          this.activeQuery = null;
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery) {
+          enqueueError(activeQuery);
+          this._activeQuery = null;
         }
-        this.queryQueue.forEach(enqueueError);
-        this.queryQueue.length = 0;
+        this._queryQueue.forEach(enqueueError);
+        this._queryQueue.length = 0;
       }
       _connect(callback) {
-        var self2 = this;
-        var con = this.connection;
+        const self2 = this;
+        const con = this.connection;
         this._connectionCallback = callback;
         if (this._connecting || this._connected) {
           const err = new Error("Client has already been connected. You cannot reuse a client.");
@@ -53518,12 +53872,14 @@ var require_client3 = __commonJS({
           return;
         }
         this._connecting = true;
-        this.connectionTimeoutHandle;
         if (this._connectionTimeoutMillis > 0) {
           this.connectionTimeoutHandle = setTimeout(() => {
             con._ending = true;
             con.stream.destroy(new Error("timeout expired"));
           }, this._connectionTimeoutMillis);
+          if (this.connectionTimeoutHandle.unref) {
+            this.connectionTimeoutHandle.unref();
+          }
         }
         if (this.host && this.host.indexOf("/") === 0) {
           con.connect(this.host + "/.s.PGSQL." + this.port);
@@ -53572,7 +53928,7 @@ var require_client3 = __commonJS({
             if (error) {
               reject(error);
             } else {
-              resolve2();
+              resolve2(this);
             }
           });
         });
@@ -53598,12 +53954,10 @@ var require_client3 = __commonJS({
         con.on("copyData", this._handleCopyData.bind(this));
         con.on("notification", this._handleNotification.bind(this));
       }
-      // TODO(bmc): deprecate pgpass "built in" integration since this.password can be a function
-      // it can be supplied by the user if required - this is a breaking change!
-      _checkPgPass(cb) {
+      _getPassword(cb) {
         const con = this.connection;
         if (typeof this.password === "function") {
-          this._Promise.resolve().then(() => this.password()).then((pass) => {
+          this._Promise.resolve().then(() => this.password(this.connectionParameters)).then((pass) => {
             if (pass !== void 0) {
               if (typeof pass !== "string") {
                 con.emit("error", new TypeError("Password must be a string"));
@@ -53624,6 +53978,7 @@ var require_client3 = __commonJS({
             const pgPass = require_lib3();
             pgPass(this.connectionParameters, (pass) => {
               if (void 0 !== pass) {
+                pgPassDeprecationNotice();
                 this.connectionParameters.password = this.password = pass;
               }
               cb();
@@ -53634,12 +53989,12 @@ var require_client3 = __commonJS({
         }
       }
       _handleAuthCleartextPassword(msg) {
-        this._checkPgPass(() => {
+        this._getPassword(() => {
           this.connection.password(this.password);
         });
       }
       _handleAuthMD5Password(msg) {
-        this._checkPgPass(async () => {
+        this._getPassword(async () => {
           try {
             const hashedPassword = await crypto2.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
@@ -53649,9 +54004,9 @@ var require_client3 = __commonJS({
         });
       }
       _handleAuthSASL(msg) {
-        this._checkPgPass(() => {
+        this._getPassword(() => {
           try {
-            this.saslSession = sasl.startSession(msg.mechanisms);
+            this.saslSession = sasl.startSession(msg.mechanisms, this.enableChannelBinding && this.connection.stream);
             this.connection.sendSASLInitialResponseMessage(this.saslSession.mechanism, this.saslSession.response);
           } catch (err) {
             this.connection.emit("error", err);
@@ -53660,7 +54015,12 @@ var require_client3 = __commonJS({
       }
       async _handleAuthSASLContinue(msg) {
         try {
-          await sasl.continueSession(this.saslSession, this.password, msg.data);
+          await sasl.continueSession(
+            this.saslSession,
+            this.password,
+            msg.data,
+            this.enableChannelBinding && this.connection.stream
+          );
           this.connection.sendSCRAMClientFinalMessage(this.saslSession.response);
         } catch (err) {
           this.connection.emit("error", err);
@@ -53689,15 +54049,15 @@ var require_client3 = __commonJS({
           }
           this.emit("connect");
         }
-        const { activeQuery } = this;
-        this.activeQuery = null;
+        const activeQuery = this._getActiveQuery();
+        this._activeQuery = null;
         this.readyForQuery = true;
         if (activeQuery) {
           activeQuery.handleReadyForQuery(this.connection);
         }
         this._pulseQueryQueue();
       }
-      // if we receieve an error event or error message
+      // if we receive an error event or error message
       // during the connection process we handle it here
       _handleErrorWhileConnecting(err) {
         if (this._connectionError) {
@@ -53726,39 +54086,87 @@ var require_client3 = __commonJS({
         if (this._connecting) {
           return this._handleErrorWhileConnecting(msg);
         }
-        const activeQuery = this.activeQuery;
+        const activeQuery = this._getActiveQuery();
         if (!activeQuery) {
           this._handleErrorEvent(msg);
           return;
         }
-        this.activeQuery = null;
+        this._activeQuery = null;
         activeQuery.handleError(msg, this.connection);
       }
       _handleRowDescription(msg) {
-        this.activeQuery.handleRowDescription(msg);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected rowDescription message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleRowDescription(msg);
       }
       _handleDataRow(msg) {
-        this.activeQuery.handleDataRow(msg);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected dataRow message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleDataRow(msg);
       }
       _handlePortalSuspended(msg) {
-        this.activeQuery.handlePortalSuspended(this.connection);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected portalSuspended message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handlePortalSuspended(this.connection);
       }
       _handleEmptyQuery(msg) {
-        this.activeQuery.handleEmptyQuery(this.connection);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected emptyQuery message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleEmptyQuery(this.connection);
       }
       _handleCommandComplete(msg) {
-        this.activeQuery.handleCommandComplete(msg, this.connection);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected commandComplete message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleCommandComplete(msg, this.connection);
       }
-      _handleParseComplete(msg) {
-        if (this.activeQuery.name) {
-          this.connection.parsedStatements[this.activeQuery.name] = this.activeQuery.text;
+      _handleParseComplete() {
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected parseComplete message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        if (activeQuery.name) {
+          this.connection.parsedStatements[activeQuery.name] = activeQuery.text;
         }
       }
       _handleCopyInResponse(msg) {
-        this.activeQuery.handleCopyInResponse(this.connection);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected copyInResponse message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleCopyInResponse(this.connection);
       }
       _handleCopyData(msg) {
-        this.activeQuery.handleCopyData(msg, this.connection);
+        const activeQuery = this._getActiveQuery();
+        if (activeQuery == null) {
+          const error = new Error("Received unexpected copyData message from backend.");
+          this._handleErrorEvent(error);
+          return;
+        }
+        activeQuery.handleCopyData(msg, this.connection);
       }
       _handleNotification(msg) {
         this.emit("notification", msg);
@@ -53767,12 +54175,12 @@ var require_client3 = __commonJS({
         this.emit("notice", msg);
       }
       getStartupConf() {
-        var params = this.connectionParameters;
-        var data = {
+        const params = this.connectionParameters;
+        const data = {
           user: params.user,
           database: params.database
         };
-        var appName = params.application_name || params.fallback_application_name;
+        const appName = params.application_name || params.fallback_application_name;
         if (appName) {
           data.application_name = appName;
         }
@@ -53795,7 +54203,7 @@ var require_client3 = __commonJS({
       }
       cancel(client, query) {
         if (client.activeQuery === query) {
-          var con = this.connection;
+          const con = this.connection;
           if (this.host && this.host.indexOf("/") === 0) {
             con.connect(this.host + "/.s.PGSQL." + this.port);
           } else {
@@ -53804,8 +54212,8 @@ var require_client3 = __commonJS({
           con.on("connect", function() {
             con.cancel(client.processID, client.secretKey);
           });
-        } else if (client.queryQueue.indexOf(query) !== -1) {
-          client.queryQueue.splice(client.queryQueue.indexOf(query), 1);
+        } else if (client._queryQueue.indexOf(query) !== -1) {
+          client._queryQueue.splice(client._queryQueue.indexOf(query), 1);
         }
       }
       setTypeParser(oid, format, parseFn) {
@@ -53825,41 +54233,46 @@ var require_client3 = __commonJS({
       }
       _pulseQueryQueue() {
         if (this.readyForQuery === true) {
-          this.activeQuery = this.queryQueue.shift();
-          if (this.activeQuery) {
+          this._activeQuery = this._queryQueue.shift();
+          const activeQuery = this._getActiveQuery();
+          if (activeQuery) {
             this.readyForQuery = false;
             this.hasExecuted = true;
-            const queryError = this.activeQuery.submit(this.connection);
+            const queryError = activeQuery.submit(this.connection);
             if (queryError) {
               process.nextTick(() => {
-                this.activeQuery.handleError(queryError, this.connection);
+                activeQuery.handleError(queryError, this.connection);
                 this.readyForQuery = true;
                 this._pulseQueryQueue();
               });
             }
           } else if (this.hasExecuted) {
-            this.activeQuery = null;
+            this._activeQuery = null;
             this.emit("drain");
           }
         }
       }
       query(config, values, callback) {
-        var query;
-        var result;
-        var readTimeout;
-        var readTimeoutTimer;
-        var queryCallback;
+        let query;
+        let result;
+        let readTimeout;
+        let readTimeoutTimer;
+        let queryCallback;
         if (config === null || config === void 0) {
           throw new TypeError("Client was passed a null or undefined query");
         } else if (typeof config.submit === "function") {
           readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
           result = query = config;
-          if (typeof values === "function") {
-            query.callback = query.callback || values;
+          if (!query.callback) {
+            if (typeof values === "function") {
+              query.callback = values;
+            } else if (callback) {
+              query.callback = callback;
+            }
           }
         } else {
-          readTimeout = this.connectionParameters.query_timeout;
-          query = new Query(config, values, callback);
+          readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
+          query = new Query2(config, values, callback);
           if (!query.callback) {
             result = new this._Promise((resolve2, reject) => {
               query.callback = (err, res) => err ? reject(err) : resolve2(res);
@@ -53870,18 +54283,19 @@ var require_client3 = __commonJS({
           }
         }
         if (readTimeout) {
-          queryCallback = query.callback;
+          queryCallback = query.callback || (() => {
+          });
           readTimeoutTimer = setTimeout(() => {
-            var error = new Error("Query read timeout");
+            const error = new Error("Query read timeout");
             process.nextTick(() => {
               query.handleError(error, this.connection);
             });
             queryCallback(error);
             query.callback = () => {
             };
-            var index = this.queryQueue.indexOf(query);
+            const index = this._queryQueue.indexOf(query);
             if (index > -1) {
-              this.queryQueue.splice(index, 1);
+              this._queryQueue.splice(index, 1);
             }
             this._pulseQueryQueue();
           }, readTimeout);
@@ -53908,7 +54322,10 @@ var require_client3 = __commonJS({
           });
           return result;
         }
-        this.queryQueue.push(query);
+        if (this._queryQueue.length > 0) {
+          queryQueueLengthDeprecationNotice();
+        }
+        this._queryQueue.push(query);
         this._pulseQueryQueue();
         return result;
       }
@@ -53927,7 +54344,7 @@ var require_client3 = __commonJS({
             return this._Promise.resolve();
           }
         }
-        if (this.activeQuery || !this._queryable) {
+        if (this._getActiveQuery() || !this._queryable) {
           this.connection.stream.destroy();
         } else {
           this.connection.end();
@@ -53940,9 +54357,13 @@ var require_client3 = __commonJS({
           });
         }
       }
+      get queryQueue() {
+        queryQueueDeprecationNotice();
+        return this._queryQueue;
+      }
     };
-    Client.Query = Query;
-    module2.exports = Client;
+    Client2.Query = Query2;
+    module2.exports = Client2;
   }
 });
 
@@ -54001,8 +54422,8 @@ var require_pg_pool = __commonJS({
         pool.emit("error", err, client);
       };
     }
-    var Pool = class extends EventEmitter {
-      constructor(options, Client) {
+    var Pool2 = class extends EventEmitter {
+      constructor(options, Client2) {
         super();
         this.options = Object.assign({}, options);
         if (options != null && "password" in options) {
@@ -54019,12 +54440,13 @@ var require_pg_pool = __commonJS({
           });
         }
         this.options.max = this.options.max || this.options.poolSize || 10;
+        this.options.min = this.options.min || 0;
         this.options.maxUses = this.options.maxUses || Infinity;
         this.options.allowExitOnIdle = this.options.allowExitOnIdle || false;
         this.options.maxLifetimeSeconds = this.options.maxLifetimeSeconds || 0;
         this.log = this.options.log || function() {
         };
-        this.Client = this.options.Client || Client || require_lib4().Client;
+        this.Client = this.options.Client || Client2 || require_lib4().Client;
         this.Promise = this.options.Promise || global.Promise;
         if (typeof this.options.idleTimeoutMillis === "undefined") {
           this.options.idleTimeoutMillis = 1e4;
@@ -54037,8 +54459,18 @@ var require_pg_pool = __commonJS({
         this.ending = false;
         this.ended = false;
       }
+      _promiseTry(f) {
+        const Promise2 = this.Promise;
+        if (typeof Promise2.try === "function") {
+          return Promise2.try(f);
+        }
+        return new Promise2((resolve2) => resolve2(f()));
+      }
       _isFull() {
         return this._clients.length >= this.options.max;
+      }
+      _isAboveMin() {
+        return this._clients.length > this.options.min;
       }
       _pulseQueue() {
         this.log("pulse queue");
@@ -54080,14 +54512,19 @@ var require_pg_pool = __commonJS({
         }
         throw new Error("unexpected condition");
       }
-      _remove(client) {
+      _remove(client, callback) {
         const removed = removeWhere(this._idle, (item) => item.client === client);
         if (removed !== void 0) {
           clearTimeout(removed.timeoutId);
         }
         this._clients = this._clients.filter((c) => c !== client);
-        client.end();
-        this.emit("remove", client);
+        const context4 = this;
+        client.end(() => {
+          context4.emit("remove", client);
+          if (typeof callback === "function") {
+            callback();
+          }
+        });
       }
       connect(cb) {
         if (this.ending) {
@@ -54114,6 +54551,9 @@ var require_pg_pool = __commonJS({
             pendingItem.timedOut = true;
             response.callback(new Error("timeout exceeded when trying to connect"));
           }, this.options.connectionTimeoutMillis);
+          if (tid.unref) {
+            tid.unref();
+          }
           this._pendingQueue.push(pendingItem);
           return result;
         }
@@ -54129,9 +54569,15 @@ var require_pg_pool = __commonJS({
         let timeoutHit = false;
         if (this.options.connectionTimeoutMillis) {
           tid = setTimeout(() => {
-            this.log("ending client due to timeout");
-            timeoutHit = true;
-            client.connection ? client.connection.stream.destroy() : client.end();
+            if (client.connection) {
+              this.log("ending client due to timeout");
+              timeoutHit = true;
+              client.connection.stream.destroy();
+            } else if (!client.isConnected()) {
+              this.log("ending client due to timeout");
+              timeoutHit = true;
+              client.end();
+            }
           }, this.options.connectionTimeoutMillis);
         }
         this.log("connecting new client");
@@ -54144,7 +54590,7 @@ var require_pg_pool = __commonJS({
             this.log("client failed to connect", err);
             this._clients = this._clients.filter((c) => c !== client);
             if (timeoutHit) {
-              err.message = "Connection terminated due to connection timeout";
+              err = new Error("Connection terminated due to connection timeout", { cause: err });
             }
             this._pulseQueue();
             if (!pendingItem.timedOut) {
@@ -54152,26 +54598,46 @@ var require_pg_pool = __commonJS({
             }
           } else {
             this.log("new client connected");
-            if (this.options.maxLifetimeSeconds !== 0) {
-              const maxLifetimeTimeout = setTimeout(() => {
-                this.log("ending client due to expired lifetime");
-                this._expired.add(client);
-                const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client);
-                if (idleIndex !== -1) {
-                  this._acquireClient(
-                    client,
-                    new PendingItem((err2, client2, clientRelease) => clientRelease()),
-                    idleListener,
-                    false
-                  );
+            if (this.options.onConnect) {
+              this._promiseTry(() => this.options.onConnect(client)).then(
+                () => {
+                  this._afterConnect(client, pendingItem, idleListener);
+                },
+                (hookErr) => {
+                  this._clients = this._clients.filter((c) => c !== client);
+                  client.end(() => {
+                    this._pulseQueue();
+                    if (!pendingItem.timedOut) {
+                      pendingItem.callback(hookErr, void 0, NOOP);
+                    }
+                  });
                 }
-              }, this.options.maxLifetimeSeconds * 1e3);
-              maxLifetimeTimeout.unref();
-              client.once("end", () => clearTimeout(maxLifetimeTimeout));
+              );
+              return;
             }
-            return this._acquireClient(client, pendingItem, idleListener, true);
+            return this._afterConnect(client, pendingItem, idleListener);
           }
         });
+      }
+      _afterConnect(client, pendingItem, idleListener) {
+        if (this.options.maxLifetimeSeconds !== 0) {
+          const maxLifetimeTimeout = setTimeout(() => {
+            this.log("ending client due to expired lifetime");
+            this._expired.add(client);
+            const idleIndex = this._idle.findIndex((idleItem) => idleItem.client === client);
+            if (idleIndex !== -1) {
+              this._acquireClient(
+                client,
+                new PendingItem((err, client2, clientRelease) => clientRelease()),
+                idleListener,
+                false
+              );
+            }
+          }, this.options.maxLifetimeSeconds * 1e3);
+          maxLifetimeTimeout.unref();
+          client.once("end", () => clearTimeout(maxLifetimeTimeout));
+        }
+        return this._acquireClient(client, pendingItem, idleListener, true);
       }
       // acquire a client for a pending work item
       _acquireClient(client, pendingItem, idleListener, isNew) {
@@ -54222,23 +54688,21 @@ var require_pg_pool = __commonJS({
           if (client._poolUseCount >= this.options.maxUses) {
             this.log("remove expended client");
           }
-          this._remove(client);
-          this._pulseQueue();
-          return;
+          return this._remove(client, this._pulseQueue.bind(this));
         }
         const isExpired = this._expired.has(client);
         if (isExpired) {
           this.log("remove expired client");
           this._expired.delete(client);
-          this._remove(client);
-          this._pulseQueue();
-          return;
+          return this._remove(client, this._pulseQueue.bind(this));
         }
         let tid;
-        if (this.options.idleTimeoutMillis) {
+        if (this.options.idleTimeoutMillis && this._isAboveMin()) {
           tid = setTimeout(() => {
-            this.log("remove idle client");
-            this._remove(client);
+            if (this._isAboveMin()) {
+              this.log("remove idle client");
+              this._remove(client, this._pulseQueue.bind(this));
+            }
           }, this.options.idleTimeoutMillis);
           if (this.options.allowExitOnIdle) {
             tid.unref();
@@ -54325,7 +54789,7 @@ var require_pg_pool = __commonJS({
         return this._clients.length;
       }
     };
-    module2.exports = Pool;
+    module2.exports = Pool2;
   }
 });
 
@@ -54342,6 +54806,7 @@ var require_query2 = __commonJS({
       this.text = config.text;
       this.values = config.values;
       this.name = config.name;
+      this.queryMode = config.queryMode;
       this.callback = config.callback;
       this.state = "new";
       this._arrayMode = config.rowMode === "array";
@@ -54355,7 +54820,6 @@ var require_query2 = __commonJS({
     };
     util.inherits(NativeQuery, EventEmitter);
     var errorFieldMap = {
-      /* eslint-disable quote-props */
       sqlState: "code",
       statementPosition: "position",
       messagePrimary: "message",
@@ -54370,10 +54834,10 @@ var require_query2 = __commonJS({
       sourceFunction: "routine"
     };
     NativeQuery.prototype.handleError = function(err) {
-      var fields = this.native.pq.resultErrorFields();
+      const fields = this.native.pq.resultErrorFields();
       if (fields) {
-        for (var key in fields) {
-          var normalizedFieldName = errorFieldMap[key] || key;
+        for (const key in fields) {
+          const normalizedFieldName = errorFieldMap[key] || key;
           err[normalizedFieldName] = fields[key];
         }
       }
@@ -54402,10 +54866,10 @@ var require_query2 = __commonJS({
     };
     NativeQuery.prototype.submit = function(client) {
       this.state = "running";
-      var self2 = this;
+      const self2 = this;
       this.native = client.native;
       client.native.arrayMode = this._arrayMode;
-      var after = function(err, rows, results) {
+      let after = function(err, rows, results) {
         client.native.arrayMode = false;
         setImmediate(function() {
           self2.emit("_done");
@@ -54441,7 +54905,7 @@ var require_query2 = __commonJS({
           console.error("You supplied %s (%s)", this.name, this.name.length);
           console.error("This can cause conflicts and silent errors executing queries");
         }
-        var values = (this.values || []).map(utils.prepareValue);
+        const values = (this.values || []).map(utils.prepareValue);
         if (client.namedQueries[this.name]) {
           if (this.text && client.namedQueries[this.name] !== this.text) {
             const err = new Error(`Prepared statements must be unique - '${this.name}' was used for a different statement`);
@@ -54459,8 +54923,10 @@ var require_query2 = __commonJS({
           const err = new Error("Query values must be an array");
           return after(err);
         }
-        var vals = this.values.map(utils.prepareValue);
+        const vals = this.values.map(utils.prepareValue);
         client.native.query(this.text, vals, after);
+      } else if (this.queryMode === "extended") {
+        client.native.query(this.text, [], after);
       } else {
         client.native.query(this.text, after);
       }
@@ -54471,23 +54937,28 @@ var require_query2 = __commonJS({
 // node_modules/pg/lib/native/client.js
 var require_client4 = __commonJS({
   "node_modules/pg/lib/native/client.js"(exports2, module2) {
-    "use strict";
+    var nodeUtils = require("util");
     var Native;
     try {
       Native = require("pg-native");
     } catch (e) {
       throw e;
     }
-    var TypeOverrides = require_type_overrides();
+    var TypeOverrides2 = require_type_overrides();
     var EventEmitter = require("events").EventEmitter;
     var util = require("util");
     var ConnectionParameters = require_connection_parameters();
     var NativeQuery = require_query2();
-    var Client = module2.exports = function(config) {
+    var queryQueueLengthDeprecationNotice = nodeUtils.deprecate(
+      () => {
+      },
+      "Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead."
+    );
+    var Client2 = module2.exports = function(config) {
       EventEmitter.call(this);
       config = config || {};
       this._Promise = config.Promise || global.Promise;
-      this._types = new TypeOverrides(config.types);
+      this._types = new TypeOverrides2(config.types);
       this.native = new Native({
         types: this._types
       });
@@ -54496,7 +54967,7 @@ var require_client4 = __commonJS({
       this._connecting = false;
       this._connected = false;
       this._queryable = true;
-      var cp = this.connectionParameters = new ConnectionParameters(config);
+      const cp = this.connectionParameters = new ConnectionParameters(config);
       if (config.nativeConnectionString) cp.nativeConnectionString = config.nativeConnectionString;
       this.user = cp.user;
       Object.defineProperty(this, "password", {
@@ -54510,9 +54981,9 @@ var require_client4 = __commonJS({
       this.port = cp.port;
       this.namedQueries = {};
     };
-    Client.Query = NativeQuery;
-    util.inherits(Client, EventEmitter);
-    Client.prototype._errorAllQueries = function(err) {
+    Client2.Query = NativeQuery;
+    util.inherits(Client2, EventEmitter);
+    Client2.prototype._errorAllQueries = function(err) {
       const enqueueError = (query) => {
         process.nextTick(() => {
           query.native = this.native;
@@ -54526,8 +54997,8 @@ var require_client4 = __commonJS({
       this._queryQueue.forEach(enqueueError);
       this._queryQueue.length = 0;
     };
-    Client.prototype._connect = function(cb) {
-      var self2 = this;
+    Client2.prototype._connect = function(cb) {
+      const self2 = this;
       if (this._connecting) {
         process.nextTick(() => cb(new Error("Client has already been connected. You cannot reuse a client.")));
         return;
@@ -54555,11 +55026,11 @@ var require_client4 = __commonJS({
           });
           self2.emit("connect");
           self2._pulseQueryQueue(true);
-          cb();
+          cb(null, this);
         });
       });
     };
-    Client.prototype.connect = function(callback) {
+    Client2.prototype.connect = function(callback) {
       if (callback) {
         this._connect(callback);
         return;
@@ -54569,17 +55040,17 @@ var require_client4 = __commonJS({
           if (error) {
             reject(error);
           } else {
-            resolve2();
+            resolve2(this);
           }
         });
       });
     };
-    Client.prototype.query = function(config, values, callback) {
-      var query;
-      var result;
-      var readTimeout;
-      var readTimeoutTimer;
-      var queryCallback;
+    Client2.prototype.query = function(config, values, callback) {
+      let query;
+      let result;
+      let readTimeout;
+      let readTimeoutTimer;
+      let queryCallback;
       if (config === null || config === void 0) {
         throw new TypeError("Client was passed a null or undefined query");
       } else if (typeof config.submit === "function") {
@@ -54589,7 +55060,7 @@ var require_client4 = __commonJS({
           config.callback = values;
         }
       } else {
-        readTimeout = this.connectionParameters.query_timeout;
+        readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
         query = new NativeQuery(config, values, callback);
         if (!query.callback) {
           let resolveOut, rejectOut;
@@ -54604,16 +55075,17 @@ var require_client4 = __commonJS({
         }
       }
       if (readTimeout) {
-        queryCallback = query.callback;
+        queryCallback = query.callback || (() => {
+        });
         readTimeoutTimer = setTimeout(() => {
-          var error = new Error("Query read timeout");
+          const error = new Error("Query read timeout");
           process.nextTick(() => {
             query.handleError(error, this.connection);
           });
           queryCallback(error);
           query.callback = () => {
           };
-          var index = this._queryQueue.indexOf(query);
+          const index = this._queryQueue.indexOf(query);
           if (index > -1) {
             this._queryQueue.splice(index, 1);
           }
@@ -54638,23 +55110,27 @@ var require_client4 = __commonJS({
         });
         return result;
       }
+      if (this._queryQueue.length > 0) {
+        queryQueueLengthDeprecationNotice();
+      }
       this._queryQueue.push(query);
       this._pulseQueryQueue();
       return result;
     };
-    Client.prototype.end = function(cb) {
-      var self2 = this;
+    Client2.prototype.end = function(cb) {
+      const self2 = this;
       this._ending = true;
       if (!this._connected) {
         this.once("connect", this.end.bind(this, cb));
       }
-      var result;
+      let result;
       if (!cb) {
         result = new this._Promise(function(resolve2, reject) {
           cb = (err) => err ? reject(err) : resolve2();
         });
       }
       this.native.end(function() {
+        self2._connected = false;
         self2._errorAllQueries(new Error("Connection terminated"));
         process.nextTick(() => {
           self2.emit("end");
@@ -54663,17 +55139,17 @@ var require_client4 = __commonJS({
       });
       return result;
     };
-    Client.prototype._hasActiveQuery = function() {
+    Client2.prototype._hasActiveQuery = function() {
       return this._activeQuery && this._activeQuery.state !== "error" && this._activeQuery.state !== "end";
     };
-    Client.prototype._pulseQueryQueue = function(initialConnection) {
+    Client2.prototype._pulseQueryQueue = function(initialConnection) {
       if (!this._connected) {
         return;
       }
       if (this._hasActiveQuery()) {
         return;
       }
-      var query = this._queryQueue.shift();
+      const query = this._queryQueue.shift();
       if (!query) {
         if (!initialConnection) {
           this.emit("drain");
@@ -54682,12 +55158,12 @@ var require_client4 = __commonJS({
       }
       this._activeQuery = query;
       query.submit(this);
-      var self2 = this;
+      const self2 = this;
       query.once("_done", function() {
         self2._pulseQueryQueue();
       });
     };
-    Client.prototype.cancel = function(query) {
+    Client2.prototype.cancel = function(query) {
       if (this._activeQuery === query) {
         this.native.cancel(function() {
         });
@@ -54695,15 +55171,18 @@ var require_client4 = __commonJS({
         this._queryQueue.splice(this._queryQueue.indexOf(query), 1);
       }
     };
-    Client.prototype.ref = function() {
+    Client2.prototype.ref = function() {
     };
-    Client.prototype.unref = function() {
+    Client2.prototype.unref = function() {
     };
-    Client.prototype.setTypeParser = function(oid, format, parseFn) {
+    Client2.prototype.setTypeParser = function(oid, format, parseFn) {
       return this._types.setTypeParser(oid, format, parseFn);
     };
-    Client.prototype.getTypeParser = function(oid, format) {
+    Client2.prototype.getTypeParser = function(oid, format) {
       return this._types.getTypeParser(oid, format);
+    };
+    Client2.prototype.isConnected = function() {
+      return this._connected;
     };
   }
 });
@@ -54720,54 +55199,65 @@ var require_native = __commonJS({
 var require_lib4 = __commonJS({
   "node_modules/pg/lib/index.js"(exports2, module2) {
     "use strict";
-    var Client = require_client3();
-    var defaults2 = require_defaults();
-    var Connection = require_connection3();
-    var Pool = require_pg_pool();
+    var Client2 = require_client3();
+    var defaults3 = require_defaults();
+    var Connection2 = require_connection3();
+    var Result2 = require_result();
+    var utils = require_utils3();
+    var Pool2 = require_pg_pool();
+    var TypeOverrides2 = require_type_overrides();
     var { DatabaseError: DatabaseError2 } = require_dist();
-    var { escapeIdentifier, escapeLiteral } = require_utils3();
-    var poolFactory = (Client2) => {
-      return class BoundPool extends Pool {
+    var { escapeIdentifier: escapeIdentifier2, escapeLiteral: escapeLiteral2 } = require_utils3();
+    var poolFactory = (Client3) => {
+      return class BoundPool extends Pool2 {
         constructor(options) {
-          super(options, Client2);
+          super(options, Client3);
         }
       };
     };
-    var PG = function(clientConstructor) {
-      this.defaults = defaults2;
-      this.Client = clientConstructor;
+    var PG = function(clientConstructor2) {
+      this.defaults = defaults3;
+      this.Client = clientConstructor2;
       this.Query = this.Client.Query;
       this.Pool = poolFactory(this.Client);
       this._pools = [];
-      this.Connection = Connection;
+      this.Connection = Connection2;
       this.types = require_pg_types();
       this.DatabaseError = DatabaseError2;
-      this.escapeIdentifier = escapeIdentifier;
-      this.escapeLiteral = escapeLiteral;
+      this.TypeOverrides = TypeOverrides2;
+      this.escapeIdentifier = escapeIdentifier2;
+      this.escapeLiteral = escapeLiteral2;
+      this.Result = Result2;
+      this.utils = utils;
     };
-    if (typeof process.env.NODE_PG_FORCE_NATIVE !== "undefined") {
-      module2.exports = new PG(require_native());
-    } else {
-      module2.exports = new PG(Client);
-      Object.defineProperty(module2.exports, "native", {
-        configurable: true,
-        enumerable: false,
-        get() {
-          var native = null;
-          try {
-            native = new PG(require_native());
-          } catch (err) {
-            if (err.code !== "MODULE_NOT_FOUND") {
-              throw err;
-            }
-          }
-          Object.defineProperty(module2.exports, "native", {
-            value: native
-          });
-          return native;
-        }
-      });
+    var clientConstructor = Client2;
+    var forceNative = false;
+    try {
+      forceNative = !!process.env.NODE_PG_FORCE_NATIVE;
+    } catch {
     }
+    if (forceNative) {
+      clientConstructor = require_native();
+    }
+    module2.exports = new PG(clientConstructor);
+    Object.defineProperty(module2.exports, "native", {
+      configurable: true,
+      enumerable: false,
+      get() {
+        let native = null;
+        try {
+          native = new PG(require_native());
+        } catch (err) {
+          if (err.code !== "MODULE_NOT_FOUND") {
+            throw err;
+          }
+        }
+        Object.defineProperty(module2.exports, "native", {
+          value: native
+        });
+        return native;
+      }
+    });
   }
 });
 
@@ -56536,37 +57026,37 @@ var require_dataType = __commonJS({
       DataType2[DataType2["Wrong"] = 1] = "Wrong";
     })(DataType || (exports2.DataType = DataType = {}));
     function getSchemaTypes(schema) {
-      const types = getJSONTypes(schema.type);
-      const hasNull = types.includes("null");
+      const types2 = getJSONTypes(schema.type);
+      const hasNull = types2.includes("null");
       if (hasNull) {
         if (schema.nullable === false)
           throw new Error("type: null contradicts nullable: false");
       } else {
-        if (!types.length && schema.nullable !== void 0) {
+        if (!types2.length && schema.nullable !== void 0) {
           throw new Error('"nullable" cannot be used without "type"');
         }
         if (schema.nullable === true)
-          types.push("null");
+          types2.push("null");
       }
-      return types;
+      return types2;
     }
     exports2.getSchemaTypes = getSchemaTypes;
     function getJSONTypes(ts) {
-      const types = Array.isArray(ts) ? ts : ts ? [ts] : [];
-      if (types.every(rules_1.isJSONType))
-        return types;
-      throw new Error("type must be JSONType or JSONType[]: " + types.join(","));
+      const types2 = Array.isArray(ts) ? ts : ts ? [ts] : [];
+      if (types2.every(rules_1.isJSONType))
+        return types2;
+      throw new Error("type must be JSONType or JSONType[]: " + types2.join(","));
     }
     exports2.getJSONTypes = getJSONTypes;
-    function coerceAndCheckDataType(it, types) {
+    function coerceAndCheckDataType(it, types2) {
       const { gen, data, opts } = it;
-      const coerceTo = coerceToTypes(types, opts.coerceTypes);
-      const checkTypes = types.length > 0 && !(coerceTo.length === 0 && types.length === 1 && (0, applicability_1.schemaHasRulesForType)(it, types[0]));
+      const coerceTo = coerceToTypes(types2, opts.coerceTypes);
+      const checkTypes = types2.length > 0 && !(coerceTo.length === 0 && types2.length === 1 && (0, applicability_1.schemaHasRulesForType)(it, types2[0]));
       if (checkTypes) {
-        const wrongType = checkDataTypes(types, data, opts.strictNumbers, DataType.Wrong);
+        const wrongType = checkDataTypes(types2, data, opts.strictNumbers, DataType.Wrong);
         gen.if(wrongType, () => {
           if (coerceTo.length)
-            coerceData(it, types, coerceTo);
+            coerceData(it, types2, coerceTo);
           else
             reportTypeError(it);
         });
@@ -56575,15 +57065,15 @@ var require_dataType = __commonJS({
     }
     exports2.coerceAndCheckDataType = coerceAndCheckDataType;
     var COERCIBLE = /* @__PURE__ */ new Set(["string", "number", "integer", "boolean", "null"]);
-    function coerceToTypes(types, coerceTypes) {
-      return coerceTypes ? types.filter((t) => COERCIBLE.has(t) || coerceTypes === "array" && t === "array") : [];
+    function coerceToTypes(types2, coerceTypes) {
+      return coerceTypes ? types2.filter((t) => COERCIBLE.has(t) || coerceTypes === "array" && t === "array") : [];
     }
-    function coerceData(it, types, coerceTo) {
+    function coerceData(it, types2, coerceTo) {
       const { gen, data, opts } = it;
       const dataType = gen.let("dataType", (0, codegen_1._)`typeof ${data}`);
       const coerced = gen.let("coerced", (0, codegen_1._)`undefined`);
       if (opts.coerceTypes === "array") {
-        gen.if((0, codegen_1._)`${dataType} == 'object' && Array.isArray(${data}) && ${data}.length == 1`, () => gen.assign(data, (0, codegen_1._)`${data}[0]`).assign(dataType, (0, codegen_1._)`typeof ${data}`).if(checkDataTypes(types, data, opts.strictNumbers), () => gen.assign(coerced, data)));
+        gen.if((0, codegen_1._)`${dataType} == 'object' && Array.isArray(${data}) && ${data}.length == 1`, () => gen.assign(data, (0, codegen_1._)`${data}[0]`).assign(dataType, (0, codegen_1._)`typeof ${data}`).if(checkDataTypes(types2, data, opts.strictNumbers), () => gen.assign(coerced, data)));
       }
       gen.if((0, codegen_1._)`${coerced} !== undefined`);
       for (const t of coerceTo) {
@@ -56659,19 +57149,19 @@ var require_dataType = __commonJS({
         return checkDataType(dataTypes[0], data, strictNums, correct);
       }
       let cond;
-      const types = (0, util_1.toHash)(dataTypes);
-      if (types.array && types.object) {
+      const types2 = (0, util_1.toHash)(dataTypes);
+      if (types2.array && types2.object) {
         const notObj = (0, codegen_1._)`typeof ${data} != "object"`;
-        cond = types.null ? notObj : (0, codegen_1._)`!${data} || ${notObj}`;
-        delete types.null;
-        delete types.array;
-        delete types.object;
+        cond = types2.null ? notObj : (0, codegen_1._)`!${data} || ${notObj}`;
+        delete types2.null;
+        delete types2.array;
+        delete types2.object;
       } else {
         cond = codegen_1.nil;
       }
-      if (types.number)
-        delete types.integer;
-      for (const t in types)
+      if (types2.number)
+        delete types2.integer;
+      for (const t in types2)
         cond = (0, codegen_1.and)(cond, checkDataType(t, data, strictNums, correct));
       return cond;
     }
@@ -57441,9 +57931,9 @@ var require_validate = __commonJS({
     function typeAndKeywords(it, errsCount) {
       if (it.opts.jtd)
         return schemaKeywords(it, [], false, errsCount);
-      const types = (0, dataType_1.getSchemaTypes)(it.schema);
-      const checkedTypes = (0, dataType_1.coerceAndCheckDataType)(it, types);
-      schemaKeywords(it, types, !checkedTypes, errsCount);
+      const types2 = (0, dataType_1.getSchemaTypes)(it.schema);
+      const checkedTypes = (0, dataType_1.coerceAndCheckDataType)(it, types2);
+      schemaKeywords(it, types2, !checkedTypes, errsCount);
     }
     function checkRefsAndKeywords(it) {
       const { schema, errSchemaPath, opts, self: self2 } = it;
@@ -57493,7 +57983,7 @@ var require_validate = __commonJS({
       if (items instanceof codegen_1.Name)
         gen.assign((0, codegen_1._)`${evaluated}.items`, items);
     }
-    function schemaKeywords(it, types, typeErrors, errsCount) {
+    function schemaKeywords(it, types2, typeErrors, errsCount) {
       const { gen, schema, data, allErrors, opts, self: self2 } = it;
       const { RULES } = self2;
       if (schema.$ref && (opts.ignoreKeywordsWithRef || !(0, util_1.schemaHasRulesButRef)(schema, RULES))) {
@@ -57501,7 +57991,7 @@ var require_validate = __commonJS({
         return;
       }
       if (!opts.jtd)
-        checkStrictTypes(it, types);
+        checkStrictTypes(it, types2);
       gen.block(() => {
         for (const group of RULES.rules)
           groupKeywords(group);
@@ -57513,7 +58003,7 @@ var require_validate = __commonJS({
         if (group.type) {
           gen.if((0, dataType_2.checkDataType)(group.type, data, opts.strictNumbers));
           iterateKeywords(it, group);
-          if (types.length === 1 && types[0] === group.type && typeErrors) {
+          if (types2.length === 1 && types2[0] === group.type && typeErrors) {
             gen.else();
             (0, dataType_2.reportTypeError)(it);
           }
@@ -57537,27 +58027,27 @@ var require_validate = __commonJS({
         }
       });
     }
-    function checkStrictTypes(it, types) {
+    function checkStrictTypes(it, types2) {
       if (it.schemaEnv.meta || !it.opts.strictTypes)
         return;
-      checkContextTypes(it, types);
+      checkContextTypes(it, types2);
       if (!it.opts.allowUnionTypes)
-        checkMultipleTypes(it, types);
+        checkMultipleTypes(it, types2);
       checkKeywordTypes(it, it.dataTypes);
     }
-    function checkContextTypes(it, types) {
-      if (!types.length)
+    function checkContextTypes(it, types2) {
+      if (!types2.length)
         return;
       if (!it.dataTypes.length) {
-        it.dataTypes = types;
+        it.dataTypes = types2;
         return;
       }
-      types.forEach((t) => {
+      types2.forEach((t) => {
         if (!includesType(it.dataTypes, t)) {
           strictTypesError(it, `type "${t}" not allowed by context "${it.dataTypes.join(",")}"`);
         }
       });
-      narrowSchemaTypes(it, types);
+      narrowSchemaTypes(it, types2);
     }
     function checkMultipleTypes(it, ts) {
       if (ts.length > 1 && !(ts.length === 2 && ts.includes("null"))) {
@@ -61914,12 +62404,12 @@ function isPlainObject(value) {
   const Ctor = Object.prototype.hasOwnProperty.call(proto, "constructor") && proto.constructor;
   return typeof Ctor === "function" && Ctor instanceof Ctor && Function.prototype.call(Ctor) === Function.prototype.call(value);
 }
-function mergeDeep(defaults2, options) {
-  const result = Object.assign({}, defaults2);
+function mergeDeep(defaults3, options) {
+  const result = Object.assign({}, defaults3);
   Object.keys(options).forEach((key) => {
     if (isPlainObject(options[key])) {
-      if (!(key in defaults2)) Object.assign(result, { [key]: options[key] });
-      else result[key] = mergeDeep(defaults2[key], options[key]);
+      if (!(key in defaults3)) Object.assign(result, { [key]: options[key] });
+      else result[key] = mergeDeep(defaults3[key], options[key]);
     } else {
       Object.assign(result, { [key]: options[key] });
     }
@@ -61934,7 +62424,7 @@ function removeUndefinedProperties(obj) {
   }
   return obj;
 }
-function merge(defaults2, route, options) {
+function merge(defaults3, route, options) {
   if (typeof route === "string") {
     let [method, url] = route.split(" ");
     options = Object.assign(url ? { method, url } : { url: method }, options);
@@ -61944,10 +62434,10 @@ function merge(defaults2, route, options) {
   options.headers = lowercaseKeys(options.headers);
   removeUndefinedProperties(options);
   removeUndefinedProperties(options.headers);
-  const mergedOptions = mergeDeep(defaults2 || {}, options);
+  const mergedOptions = mergeDeep(defaults3 || {}, options);
   if (options.url === "/graphql") {
-    if (defaults2 && defaults2.mediaType.previews?.length) {
-      mergedOptions.mediaType.previews = defaults2.mediaType.previews.filter(
+    if (defaults3 && defaults3.mediaType.previews?.length) {
+      mergedOptions.mediaType.previews = defaults3.mediaType.previews.filter(
         (preview) => !mergedOptions.mediaType.previews.includes(preview)
       ).concat(mergedOptions.mediaType.previews);
     }
@@ -62181,8 +62671,8 @@ function parse(options) {
     options.request ? { request: options.request } : null
   );
 }
-function endpointWithDefaults(defaults2, route, options) {
-  return parse(merge(defaults2, route, options));
+function endpointWithDefaults(defaults3, route, options) {
+  return parse(merge(defaults3, route, options));
 }
 function withDefaults(oldDefaults, newDefaults) {
   const DEFAULTS2 = merge(oldDefaults, newDefaults);
@@ -62691,21 +63181,21 @@ function createLogger(logger = {}) {
 var userAgentTrail = `octokit-core.js/${VERSION4} ${getUserAgent()}`;
 var Octokit = class {
   static VERSION = VERSION4;
-  static defaults(defaults2) {
+  static defaults(defaults3) {
     const OctokitWithDefaults = class extends this {
       constructor(...args) {
         const options = args[0] || {};
-        if (typeof defaults2 === "function") {
-          super(defaults2(options));
+        if (typeof defaults3 === "function") {
+          super(defaults3(options));
           return;
         }
         super(
           Object.assign(
             {},
-            defaults2,
+            defaults3,
             options,
-            options.userAgent && defaults2.userAgent ? {
-              userAgent: `${options.userAgent} ${defaults2.userAgent}`
+            options.userAgent && defaults3.userAgent ? {
+              userAgent: `${options.userAgent} ${defaults3.userAgent}`
             } : null
           )
         );
@@ -65244,14 +65734,14 @@ var endpoints_default = Endpoints;
 var endpointMethodsMap = /* @__PURE__ */ new Map();
 for (const [scope, endpoints] of Object.entries(endpoints_default)) {
   for (const [methodName, endpoint2] of Object.entries(endpoints)) {
-    const [route, defaults2, decorations] = endpoint2;
+    const [route, defaults3, decorations] = endpoint2;
     const [method, url] = route.split(/ /);
     const endpointDefaults = Object.assign(
       {
         method,
         url
       },
-      defaults2
+      defaults3
     );
     if (!endpointMethodsMap.has(scope)) {
       endpointMethodsMap.set(scope, /* @__PURE__ */ new Map());
@@ -65321,8 +65811,8 @@ function endpointsToMethods(octokit) {
   }
   return newMethods;
 }
-function decorate(octokit, scope, methodName, defaults2, decorations) {
-  const requestWithDefaults = octokit.request.defaults(defaults2);
+function decorate(octokit, scope, methodName, defaults3, decorations) {
+  const requestWithDefaults = octokit.request.defaults(defaults3);
   function withDecorations(...args) {
     let options = requestWithDefaults.endpoint.merge(...args);
     if (decorations.mapToData) {
@@ -70090,6 +70580,8 @@ var toCreateWorkspaceServiceArgs = toObject({
   gitUrl: toNullOr(toString),
   initialBranch: toNullOr(toString),
   cloneDepth: toUndefOr(toPositiveInteger),
+  skipLfs: toUndefOr(toBoolean),
+  recurseSubmodules: toUndefOr(toBoolean),
   sourceWorkspaceId: toNullOr(toNonNegativeInteger),
   welcomeMessage: toNullOr(toString),
   replicas: toPositiveInteger,
@@ -70242,292 +70734,27 @@ ReplicaStub = __decorate3([
 // packages/deployment-service/common/lib/api/workspaceDeployment.js
 var import_inversify3 = __toESM(require_inversify(), 1);
 
-// packages/user-activity/common/lib/CountryCode.js
-var CountryCode;
-(function(CountryCode2) {
-  CountryCode2["Afghanistan"] = "AF";
-  CountryCode2["AlandIslands"] = "AX";
-  CountryCode2["Albania"] = "AL";
-  CountryCode2["Algeria"] = "DZ";
-  CountryCode2["AmericanSamoa"] = "AS";
-  CountryCode2["Andorra"] = "AD";
-  CountryCode2["Angola"] = "AO";
-  CountryCode2["Anguilla"] = "AI";
-  CountryCode2["Antarctica"] = "AQ";
-  CountryCode2["AntiguaAndBarbuda"] = "AG";
-  CountryCode2["Argentina"] = "AR";
-  CountryCode2["Armenia"] = "AM";
-  CountryCode2["Aruba"] = "AW";
-  CountryCode2["Australia"] = "AU";
-  CountryCode2["Austria"] = "AT";
-  CountryCode2["Azerbaijan"] = "AZ";
-  CountryCode2["Bahamas"] = "BS";
-  CountryCode2["Bahrain"] = "BH";
-  CountryCode2["Bangladesh"] = "BD";
-  CountryCode2["Barbados"] = "BB";
-  CountryCode2["Belarus"] = "BY";
-  CountryCode2["Belgium"] = "BE";
-  CountryCode2["Belize"] = "BZ";
-  CountryCode2["Benin"] = "BJ";
-  CountryCode2["Bermuda"] = "BM";
-  CountryCode2["Bhutan"] = "BT";
-  CountryCode2["Bolivia"] = "BO";
-  CountryCode2["BonaireSintEustatiusSaba"] = "BQ";
-  CountryCode2["BosniaAndHerzegovina"] = "BA";
-  CountryCode2["Botswana"] = "BW";
-  CountryCode2["BouvetIsland"] = "BV";
-  CountryCode2["Brazil"] = "BR";
-  CountryCode2["BritishIndianOceanTerritory"] = "IO";
-  CountryCode2["BruneiDarussalam"] = "BN";
-  CountryCode2["Bulgaria"] = "BG";
-  CountryCode2["BurkinaFaso"] = "BF";
-  CountryCode2["Burundi"] = "BI";
-  CountryCode2["Cambodia"] = "KH";
-  CountryCode2["Cameroon"] = "CM";
-  CountryCode2["Canada"] = "CA";
-  CountryCode2["CapeVerde"] = "CV";
-  CountryCode2["CaymanIslands"] = "KY";
-  CountryCode2["CentralAfricanRepublic"] = "CF";
-  CountryCode2["Chad"] = "TD";
-  CountryCode2["Chile"] = "CL";
-  CountryCode2["China"] = "CN";
-  CountryCode2["ChristmasIsland"] = "CX";
-  CountryCode2["CocosKeelingIslands"] = "CC";
-  CountryCode2["Colombia"] = "CO";
-  CountryCode2["Comoros"] = "KM";
-  CountryCode2["Congo"] = "CG";
-  CountryCode2["CongoDemocraticRepublic"] = "CD";
-  CountryCode2["CookIslands"] = "CK";
-  CountryCode2["CostaRica"] = "CR";
-  CountryCode2["CoteDIvoire"] = "CI";
-  CountryCode2["Croatia"] = "HR";
-  CountryCode2["Cuba"] = "CU";
-  CountryCode2["Curacao"] = "CW";
-  CountryCode2["Cyprus"] = "CY";
-  CountryCode2["CzechRepublic"] = "CZ";
-  CountryCode2["Denmark"] = "DK";
-  CountryCode2["Djibouti"] = "DJ";
-  CountryCode2["Dominica"] = "DM";
-  CountryCode2["DominicanRepublic"] = "DO";
-  CountryCode2["Ecuador"] = "EC";
-  CountryCode2["Egypt"] = "EG";
-  CountryCode2["ElSalvador"] = "SV";
-  CountryCode2["EquatorialGuinea"] = "GQ";
-  CountryCode2["Eritrea"] = "ER";
-  CountryCode2["Estonia"] = "EE";
-  CountryCode2["Ethiopia"] = "ET";
-  CountryCode2["FalklandIslands"] = "FK";
-  CountryCode2["FaroeIslands"] = "FO";
-  CountryCode2["Fiji"] = "FJ";
-  CountryCode2["Finland"] = "FI";
-  CountryCode2["France"] = "FR";
-  CountryCode2["FrenchGuiana"] = "GF";
-  CountryCode2["FrenchPolynesia"] = "PF";
-  CountryCode2["FrenchSouthernTerritories"] = "TF";
-  CountryCode2["Gabon"] = "GA";
-  CountryCode2["Gambia"] = "GM";
-  CountryCode2["Georgia"] = "GE";
-  CountryCode2["Germany"] = "DE";
-  CountryCode2["Ghana"] = "GH";
-  CountryCode2["Gibraltar"] = "GI";
-  CountryCode2["Greece"] = "GR";
-  CountryCode2["Greenland"] = "GL";
-  CountryCode2["Grenada"] = "GD";
-  CountryCode2["Guadeloupe"] = "GP";
-  CountryCode2["Guam"] = "GU";
-  CountryCode2["Guatemala"] = "GT";
-  CountryCode2["Guernsey"] = "GG";
-  CountryCode2["Guinea"] = "GN";
-  CountryCode2["GuineaBissau"] = "GW";
-  CountryCode2["Guyana"] = "GY";
-  CountryCode2["Haiti"] = "HT";
-  CountryCode2["HeardIslandMcdonaldIslands"] = "HM";
-  CountryCode2["HolySeeVaticanCityState"] = "VA";
-  CountryCode2["Honduras"] = "HN";
-  CountryCode2["HongKong"] = "HK";
-  CountryCode2["Hungary"] = "HU";
-  CountryCode2["Iceland"] = "IS";
-  CountryCode2["India"] = "IN";
-  CountryCode2["Indonesia"] = "ID";
-  CountryCode2["Iran"] = "IR";
-  CountryCode2["Iraq"] = "IQ";
-  CountryCode2["Ireland"] = "IE";
-  CountryCode2["IsleOfMan"] = "IM";
-  CountryCode2["Israel"] = "IL";
-  CountryCode2["Italy"] = "IT";
-  CountryCode2["Jamaica"] = "JM";
-  CountryCode2["Japan"] = "JP";
-  CountryCode2["Jersey"] = "JE";
-  CountryCode2["Jordan"] = "JO";
-  CountryCode2["Kazakhstan"] = "KZ";
-  CountryCode2["Kenya"] = "KE";
-  CountryCode2["Kiribati"] = "KI";
-  CountryCode2["Korea"] = "KR";
-  CountryCode2["KoreaDemocraticPeoplesRepublic"] = "KP";
-  CountryCode2["Kuwait"] = "KW";
-  CountryCode2["Kyrgyzstan"] = "KG";
-  CountryCode2["LaoPeoplesDemocraticRepublic"] = "LA";
-  CountryCode2["Latvia"] = "LV";
-  CountryCode2["Lebanon"] = "LB";
-  CountryCode2["Lesotho"] = "LS";
-  CountryCode2["Liberia"] = "LR";
-  CountryCode2["LibyanArabJamahiriya"] = "LY";
-  CountryCode2["Liechtenstein"] = "LI";
-  CountryCode2["Lithuania"] = "LT";
-  CountryCode2["Luxembourg"] = "LU";
-  CountryCode2["Macao"] = "MO";
-  CountryCode2["Macedonia"] = "MK";
-  CountryCode2["Madagascar"] = "MG";
-  CountryCode2["Malawi"] = "MW";
-  CountryCode2["Malaysia"] = "MY";
-  CountryCode2["Maldives"] = "MV";
-  CountryCode2["Mali"] = "ML";
-  CountryCode2["Malta"] = "MT";
-  CountryCode2["MarshallIslands"] = "MH";
-  CountryCode2["Martinique"] = "MQ";
-  CountryCode2["Mauritania"] = "MR";
-  CountryCode2["Mauritius"] = "MU";
-  CountryCode2["Mayotte"] = "YT";
-  CountryCode2["Mexico"] = "MX";
-  CountryCode2["Micronesia"] = "FM";
-  CountryCode2["Moldova"] = "MD";
-  CountryCode2["Monaco"] = "MC";
-  CountryCode2["Mongolia"] = "MN";
-  CountryCode2["Montenegro"] = "ME";
-  CountryCode2["Montserrat"] = "MS";
-  CountryCode2["Morocco"] = "MA";
-  CountryCode2["Mozambique"] = "MZ";
-  CountryCode2["Myanmar"] = "MM";
-  CountryCode2["Namibia"] = "NA";
-  CountryCode2["Nauru"] = "NR";
-  CountryCode2["Nepal"] = "NP";
-  CountryCode2["Netherlands"] = "NL";
-  CountryCode2["NewCaledonia"] = "NC";
-  CountryCode2["NewZealand"] = "NZ";
-  CountryCode2["Nicaragua"] = "NI";
-  CountryCode2["Niger"] = "NE";
-  CountryCode2["Nigeria"] = "NG";
-  CountryCode2["Niue"] = "NU";
-  CountryCode2["NorfolkIsland"] = "NF";
-  CountryCode2["NorthernMarianaIslands"] = "MP";
-  CountryCode2["Norway"] = "NO";
-  CountryCode2["Oman"] = "OM";
-  CountryCode2["Pakistan"] = "PK";
-  CountryCode2["Palau"] = "PW";
-  CountryCode2["PalestinianTerritory"] = "PS";
-  CountryCode2["Panama"] = "PA";
-  CountryCode2["PapuaNewGuinea"] = "PG";
-  CountryCode2["Paraguay"] = "PY";
-  CountryCode2["Peru"] = "PE";
-  CountryCode2["Philippines"] = "PH";
-  CountryCode2["Pitcairn"] = "PN";
-  CountryCode2["Poland"] = "PL";
-  CountryCode2["Portugal"] = "PT";
-  CountryCode2["PuertoRico"] = "PR";
-  CountryCode2["Qatar"] = "QA";
-  CountryCode2["Reunion"] = "RE";
-  CountryCode2["Romania"] = "RO";
-  CountryCode2["RussianFederation"] = "RU";
-  CountryCode2["Rwanda"] = "RW";
-  CountryCode2["SaintBarthelemy"] = "BL";
-  CountryCode2["SaintHelena"] = "SH";
-  CountryCode2["SaintKittsAndNevis"] = "KN";
-  CountryCode2["SaintLucia"] = "LC";
-  CountryCode2["SaintMartin"] = "MF";
-  CountryCode2["SaintPierreAndMiquelon"] = "PM";
-  CountryCode2["SaintVincentAndGrenadines"] = "VC";
-  CountryCode2["Samoa"] = "WS";
-  CountryCode2["SanMarino"] = "SM";
-  CountryCode2["SaoTomeAndPrincipe"] = "ST";
-  CountryCode2["SaudiArabia"] = "SA";
-  CountryCode2["Senegal"] = "SN";
-  CountryCode2["Serbia"] = "RS";
-  CountryCode2["Seychelles"] = "SC";
-  CountryCode2["SierraLeone"] = "SL";
-  CountryCode2["Singapore"] = "SG";
-  CountryCode2["SintMaarten"] = "SX";
-  CountryCode2["Slovakia"] = "SK";
-  CountryCode2["Slovenia"] = "SI";
-  CountryCode2["SolomonIslands"] = "SB";
-  CountryCode2["Somalia"] = "SO";
-  CountryCode2["SouthAfrica"] = "ZA";
-  CountryCode2["SouthGeorgiaAndSandwichIsl"] = "GS";
-  CountryCode2["SouthSudan"] = "SS";
-  CountryCode2["Spain"] = "ES";
-  CountryCode2["SriLanka"] = "LK";
-  CountryCode2["Sudan"] = "SD";
-  CountryCode2["Suriname"] = "SR";
-  CountryCode2["SvalbardAndJanMayen"] = "SJ";
-  CountryCode2["Swaziland"] = "SZ";
-  CountryCode2["Sweden"] = "SE";
-  CountryCode2["Switzerland"] = "CH";
-  CountryCode2["SyrianArabRepublic"] = "SY";
-  CountryCode2["Taiwan"] = "TW";
-  CountryCode2["Tajikistan"] = "TJ";
-  CountryCode2["Tanzania"] = "TZ";
-  CountryCode2["Thailand"] = "TH";
-  CountryCode2["TimorLeste"] = "TL";
-  CountryCode2["Togo"] = "TG";
-  CountryCode2["Tokelau"] = "TK";
-  CountryCode2["Tonga"] = "TO";
-  CountryCode2["TrinidadAndTobago"] = "TT";
-  CountryCode2["Tunisia"] = "TN";
-  CountryCode2["Turkey"] = "TR";
-  CountryCode2["Turkmenistan"] = "TM";
-  CountryCode2["TurksAndCaicosIslands"] = "TC";
-  CountryCode2["Tuvalu"] = "TV";
-  CountryCode2["Uganda"] = "UG";
-  CountryCode2["Ukraine"] = "UA";
-  CountryCode2["UnitedArabEmirates"] = "AE";
-  CountryCode2["UnitedKingdom"] = "GB";
-  CountryCode2["UnitedStates"] = "US";
-  CountryCode2["UnitedStatesOutlyingIslands"] = "UM";
-  CountryCode2["Uruguay"] = "UY";
-  CountryCode2["Uzbekistan"] = "UZ";
-  CountryCode2["Vanuatu"] = "VU";
-  CountryCode2["Venezuela"] = "VE";
-  CountryCode2["Vietnam"] = "VN";
-  CountryCode2["VirginIslandsBritish"] = "VG";
-  CountryCode2["VirginIslandsUS"] = "VI";
-  CountryCode2["WallisAndFutuna"] = "WF";
-  CountryCode2["WesternSahara"] = "EH";
-  CountryCode2["Yemen"] = "YE";
-  CountryCode2["Zambia"] = "ZM";
-  CountryCode2["Zimbabwe"] = "ZW";
-})(CountryCode || (CountryCode = {}));
-
-// packages/user-activity/common/lib/UserActivityMetadata.js
-var userActivityMetadataSpec = {
-  anonymousId: toUndefOr(toString),
-  userId: toUndefOr(toNumber),
-  teamId: toUndefOr(toNumber),
-  appId: toUndefOr(toNumber),
-  userAgent: toUndefOr(toString),
-  url: toUndefOr(toString),
-  referrer: toUndefOr(toString),
-  country: toUndefOr(toStringEnum("country", CountryCode)),
-  continent: toUndefOr(toString),
-  org: toUndefOr(toString),
-  lat: toUndefOr(toNumber),
-  lng: toUndefOr(toNumber),
-  utmSource: toUndefOr(toString),
-  utmMedium: toUndefOr(toString),
-  utmCampaign: toUndefOr(toString),
-  utmTerm: toUndefOr(toString),
-  fbclid: toUndefOr(toString),
-  gclid: toUndefOr(toString),
-  dclid: toUndefOr(toString),
-  email: toUndefOr(toString),
-  tag: toUndefOr(toString),
-  postHogSessionId: toUndefOr(toString)
-};
-var toUserActivityMetadata = toObject(userActivityMetadataSpec);
-
-// packages/user-activity/common/lib/AuthContextWithTracking.js
-var toHttpWithTrackingContext = asObjectNoCopy({
-  ...httpContext,
-  metadata: toUserActivityMetadata
+// packages/utils/common/lib/features.js
+var AVAILABLE_FEATURES = [
+  "billing",
+  "dev-domains-port",
+  "email-signup",
+  "email-signin",
+  "standalone-teams"
+];
+var availableFeatures = [...AVAILABLE_FEATURES];
+var toFeatureName = toLiteralUnion("FeatureName", availableFeatures);
+var toFeatures = toObject({
+  available: toReadOnly(toArray(toFeatureName)),
+  enabled: toReadOnly(toArray(toFeatureName))
 });
+var enabled;
+var isFeatureEnabled = (name) => {
+  if (!enabled) {
+    throw new Uninitialized("initFeatures() was not called");
+  }
+  return enabled.has(name);
+};
 
 // packages/utils/common/lib/path.js
 var import_path = require("path");
@@ -70661,13 +70888,14 @@ var toManagedServiceConfigFields = {
   secrets: toRecord(toUnknown)
 };
 var toManagedServiceConfig = toObject(toManagedServiceConfigFields);
+var toHeadlessPath = toObject({
+  path: toUrlPath,
+  stripPath: toBoolean,
+  target: toString
+});
 var toHeadlessServiceConfig = toObject({
   network: toObject({
-    paths: toArray(toObject({
-      path: toUrlPath,
-      stripPath: toBoolean,
-      target: toString
-    }))
+    paths: toArray(toHeadlessPath)
   })
 });
 var toDeployStage = toRecord(toOr(toDeployStageServer, toManagedServiceConfig, toHeadlessServiceConfig));
@@ -70723,6 +70951,8 @@ var workspace = {
   welcomeMessage: readOnly(toNullOr(toString)),
   initialBranch: readOnly(toNullOr(toString)),
   cloneDepth: toUndefOr(toPositiveInteger),
+  skipLfs: toUndefOr(toBoolean),
+  recurseSubmodules: toUndefOr(toBoolean),
   sourceWorkspaceId: readOnly(toNullOr(toNonNegativeInteger)),
   planId: toPlanId,
   replicas: toPositiveInteger,
@@ -70785,7 +71015,7 @@ var toServerV1 = toObject(serverV1);
 var uniqueServerId = ({ workspaceId, name }) => `${workspaceId}-${name}`;
 var IDE_SERVER_NAME = "codesphere-ide";
 var DEFAULT_PORT = 3e3;
-var workspaceDevDomain = (workspaceId, workspaceHostingBaseDomain) => `${workspaceId}-${DEFAULT_PORT}.${workspaceHostingBaseDomain}`;
+var workspaceDevDomain = (workspaceId, workspaceHostingBaseDomain) => `${workspaceId}${isFeatureEnabled("dev-domains-port") ? `-${DEFAULT_PORT}` : ""}.${workspaceHostingBaseDomain}`;
 var simpleNetworkToServerNetwork = (networkConfig, isPublic) => ({
   ports: [
     {
@@ -71032,7 +71262,7 @@ var workspaceDeploymentService = {
 };
 var workspaceDeploymentStub = createAuthnStubClass("WorkspaceDeploymentStub", {
   name: "Workspace",
-  context: toHttpWithTrackingContext,
+  context: toHttpContext,
   methods: workspaceDeploymentService.methods
 });
 var WorkspaceDeploymentStub = class WorkspaceDeploymentStub2 extends workspaceDeploymentStub {
@@ -71443,7 +71673,7 @@ var toExperiments = toObject({
   available: toReadOnly(toArray(toString)),
   enabled: toReadOnly(toArray(toString))
 });
-var toFeatures = toObject({
+var toFeatures2 = toObject({
   available: toReadOnly(toArray(toString)),
   enabled: toReadOnly(toArray(toString))
 });
@@ -71927,12 +72157,6 @@ var toDeactivateUserArgs = toObject({
   dryRun: toBoolean
 });
 
-// packages/auth-service/common/lib/UpdateEmailServiceArgs.js
-var toUpdateEmailServiceArgs = toObject({
-  ...emailAndPassword,
-  newEmail: readOnly(toString)
-});
-
 // packages/auth-service/common/lib/UpdateProfileArgs.js
 var toUpdateProfileArgs = toObject({
   firstName: readOnly(toString),
@@ -71944,118 +72168,6 @@ var toUploadFileArgs = toObject({
   type: readOnly(toString),
   file: readOnly(toString)
 });
-
-// packages/utils/common/lib/isValidEmail.js
-var tester = /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
-var isValidEmail = (email) => {
-  if (!email) {
-    return false;
-  }
-  const emailParts = email.split("@");
-  if (emailParts.length !== 2) {
-    return false;
-  }
-  const account = emailParts[0];
-  const address = emailParts[1];
-  if (account.length > 64) {
-    return false;
-  }
-  if (address.length > 255) {
-    return false;
-  }
-  const domainParts = address.split(".");
-  if (domainParts.some((part) => {
-    return part.length > 63;
-  })) {
-    return false;
-  }
-  if (!tester.test(email)) {
-    return false;
-  }
-  if (email.includes("+") && !email.endsWith("@codesphere.com")) {
-    return false;
-  }
-  return true;
-};
-
-// packages/auth/common/lib/user.js
-var ServiceId;
-(function(ServiceId2) {
-  ServiceId2["AuthService"] = "auth-service";
-  ServiceId2["DeploymentService"] = "deployment-service";
-  ServiceId2["PublicApiService"] = "public-api-service";
-  ServiceId2["ErrorPageServer"] = "error-page-server";
-  ServiceId2["MarketplaceService"] = "marketplace-service";
-  ServiceId2["PaymentService"] = "payment-service";
-  ServiceId2["UserDeletionCronJob"] = "userdeletion-cronjob";
-  ServiceId2["WorkspaceService"] = "workspace-service";
-  ServiceId2["WorkspaceProxy"] = "workspace-proxy";
-})(ServiceId || (ServiceId = {}));
-var toAuthenticationMethod = toLiteralUnion("AuthenticationMethod", [
-  ...ALL_OAUTH_PROVIDER_IDS,
-  "password",
-  "service",
-  "unknown"
-]);
-var user = {
-  email: toString,
-  userId: toNumber,
-  authenticationMethod: toUndefOr(toAuthenticationMethod),
-  serviceId: toUndefOr(toStringEnum("ServiceId", ServiceId)),
-  firstName: toUndefOr(toNullOr(toString)),
-  lastName: toUndefOr(toNullOr(toString)),
-  avatarId: toUndefOr(toNullOr(toString)),
-  deletedAt: toUndefOr(toDate),
-  acceptedTos: toUndefOr(toDate)
-};
-var toUser = toObject(user);
-var toUserWithSignedUp = toObject({
-  ...user,
-  signedUp: toBoolean
-});
-
-// packages/auth-service/common/lib/api/user.js
-var toEmail = (x) => {
-  if (isString(x) && isValidEmail(x)) {
-    return x;
-  }
-  throw new TypeConversionFailure("Email (e.g. email@domain.com)", x);
-};
-var toUpdateEmailInfo = toObject({
-  newEmail: toEmail,
-  createdAt: toDate,
-  pending: toBoolean
-});
-var userService = {
-  name: "User",
-  context: toHttpContext,
-  methods: {
-    delete: rpc({
-      access: "public",
-      response: toVoid,
-      request: toVoid,
-      defaultOptions: {
-        timeout: { seconds: 10 }
-      }
-    }),
-    getUser: rpc({
-      access: "public",
-      request: toVoid,
-      response: toUser
-    }),
-    deleteAvatar: rpc({
-      access: "public",
-      request: toVoid,
-      response: toVoid
-    }),
-    getUpdateEmailInfo: rpc({
-      access: "public",
-      request: toVoid,
-      response: toUpdateEmailInfo
-    })
-  }
-};
-var userStub = createAuthnStubClass("User", userService);
 
 // packages/auth-service/common/lib/api/auth.js
 var __decorate8 = function(decorators, target, key, desc) {
@@ -72218,34 +72330,11 @@ var authService = {
     })
   }
 };
-var legacyAuthService = {
-  name: "AuthLegacy",
-  context: toHttpContext,
-  methods: {
-    updateEmail: rpc({
-      access: "public",
-      request: toUpdateEmailServiceArgs,
-      response: toVoid
-    }),
-    ...authService.methods,
-    ...userService.methods
-  }
-};
 var AuthStub = class AuthStub2 extends createAuthnStubClass("AuthStub", authService) {
 };
 AuthStub = __decorate8([
   (0, import_inversify6.injectable)()
 ], AuthStub);
-var LegacyAuthStub = class LegacyAuthStub2 extends createAuthnStubClass("LegacyAuthStub", legacyAuthService) {
-};
-LegacyAuthStub = __decorate8([
-  (0, import_inversify6.injectable)()
-], LegacyAuthStub);
-var AuthReplyStub = class AuthReplyStub2 extends createAuthnReplyStubClass("AuthReplyStub", legacyAuthService) {
-};
-AuthReplyStub = __decorate8([
-  (0, import_inversify6.injectable)()
-], AuthReplyStub);
 
 // packages/auth-service/common/lib/session/api.js
 var import_inversify7 = __toESM(require_inversify(), 1);
@@ -72515,7 +72604,8 @@ var import_inversify8 = __toESM(require_inversify(), 1);
 // packages/workspace-agent/common/lib/pipeline/config.js
 var toCustomImage = toObject({
   entrypoint: toUndefOr(toArray(toString)),
-  cmd: toUndefOr(toArray(toString))
+  cmd: toUndefOr(toArray(toString)),
+  workingDir: toUndefOr(toString)
 });
 var toPipelineMetaConfig = toObject({
   configDir: toString,
@@ -72713,9 +72803,19 @@ var import_node_cache = __toESM(require_node_cache2(), 1);
 // packages/payment-service/node/lib/data-access/Products.js
 var import_inversify9 = __toESM(require_inversify(), 1);
 
-// packages/stubs/node/lib/storage/database/squily/database.js
-var import_pg = __toESM(require_lib4(), 1);
-var import_pg_protocol = __toESM(require_dist(), 1);
+// node_modules/pg/esm/index.mjs
+var import_lib = __toESM(require_lib4(), 1);
+var Client = import_lib.default.Client;
+var Pool = import_lib.default.Pool;
+var Connection = import_lib.default.Connection;
+var types = import_lib.default.types;
+var Query = import_lib.default.Query;
+var DatabaseError = import_lib.default.DatabaseError;
+var escapeIdentifier = import_lib.default.escapeIdentifier;
+var escapeLiteral = import_lib.default.escapeLiteral;
+var Result = import_lib.default.Result;
+var TypeOverrides = import_lib.default.TypeOverrides;
+var defaults2 = import_lib.default.defaults;
 
 // packages/utils/common/lib/timing.js
 var TimeTracker = class {
@@ -74322,6 +74422,8 @@ var toWorkspaceDbEntry = toObject({
   initialBranch: readOnly(toNullOr(toString)),
   isPrivateRepo: readOnly(toBoolean),
   cloneDepth: toUndefOr(toPositiveInteger),
+  skipLfs: toUndefOr(toBoolean),
+  recurseSubmodules: toUndefOr(toBoolean),
   name: toString,
   replicas: readOnly(toPositiveInteger),
   sourceWorkspaceId: readOnly(toNullOr(toNonNegativeInteger)),
@@ -74350,6 +74452,8 @@ var unsafeDbRecordToWorkspaceDbEntry = (r) => {
     welcomeMessage: r.welcomeMessage ?? null,
     initialBranch: r.initialBranch ?? null,
     cloneDepth: r.cloneDepth,
+    skipLfs: r.skipLfs,
+    recurseSubmodules: r.recurseSubmodules,
     sourceWorkspaceId: r.sourceWorkspaceId ?? null,
     vpnConfig: r.vpnConfig ?? null,
     restricted: r.restricted,
@@ -74361,6 +74465,30 @@ var unsafeDbRecordToWorkspaceDbEntry = (r) => {
   };
 };
 var NO_CONDITION = {};
+var LIST_COLS = [
+  "cloneDepth",
+  "skipLfs",
+  "recurseSubmodules",
+  "dataCenterId",
+  "gitUrl",
+  "idePlanId",
+  "id",
+  "initialBranch",
+  "isPrivateRepo",
+  "name",
+  "replicas",
+  "sourceWorkspaceId",
+  "teamId",
+  "userId",
+  "vpnConfig",
+  "welcomeMessage",
+  "restricted",
+  "baseImage",
+  "collectTraces",
+  "persistentLogs",
+  "createdAt",
+  "managedServiceId"
+];
 var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
   constructor(pubSub, db, getWorkspacePlan) {
     this.pubSub = pubSub;
@@ -74392,7 +74520,7 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
   async publish(teamId, workspace2) {
     await this.pubSub.publish(`${teamId}`, workspace2);
   }
-  async create({ ownerUserId, ownerUserEmail, teamId, name, isPrivateRepo, replicas, dataCenterId, planId, gitUrl, welcomeMessage, initialBranch, cloneDepth, sourceWorkspaceId, vpnConfig, initiatorUserId, initiatorUserEmail, restricted, baseImage: baseImage2, env, managedServiceId }) {
+  async create({ ownerUserId, ownerUserEmail, teamId, name, isPrivateRepo, replicas, dataCenterId, planId, gitUrl, welcomeMessage, initialBranch, cloneDepth, skipLfs, recurseSubmodules, sourceWorkspaceId, vpnConfig, initiatorUserId, initiatorUserEmail, restricted, baseImage: baseImage2, env, managedServiceId }) {
     return await this.db.transaction(async (tx) => {
       const ws = unsafeDbRecordToWorkspaceDbEntry(await rethrowAsync(() => tx.insert("workspaceService.workspaces", {
         userId: ownerUserId,
@@ -74406,6 +74534,8 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         welcomeMessage: welcomeMessage ?? void 0,
         initialBranch: initialBranch ?? void 0,
         cloneDepth,
+        skipLfs,
+        recurseSubmodules,
         sourceWorkspaceId: sourceWorkspaceId ?? void 0,
         vpnConfig: vpnConfig ?? void 0,
         restricted,
@@ -74461,28 +74591,7 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
     });
   }
   async listBy(condition, transaction = this.db) {
-    const rs = await transaction.selectMany("workspaceService.workspaces", [
-      "cloneDepth",
-      "dataCenterId",
-      "gitUrl",
-      "idePlanId",
-      "id",
-      "initialBranch",
-      "isPrivateRepo",
-      "name",
-      "replicas",
-      "sourceWorkspaceId",
-      "teamId",
-      "userId",
-      "vpnConfig",
-      "welcomeMessage",
-      "restricted",
-      "baseImage",
-      "collectTraces",
-      "persistentLogs",
-      "createdAt",
-      "managedServiceId"
-    ], condition);
+    const rs = await transaction.selectMany("workspaceService.workspaces", [...LIST_COLS], condition);
     return rs.map(unsafeDbRecordToWorkspaceDbEntry);
   }
   async get(workspaceId, transaction) {
@@ -74508,28 +74617,7 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
         "!=": void 0
       }
     };
-    const rs = await this.db.selectMany("workspaceService.workspaces", [
-      "cloneDepth",
-      "dataCenterId",
-      "gitUrl",
-      "idePlanId",
-      "id",
-      "initialBranch",
-      "isPrivateRepo",
-      "name",
-      "replicas",
-      "sourceWorkspaceId",
-      "teamId",
-      "userId",
-      "vpnConfig",
-      "welcomeMessage",
-      "restricted",
-      "baseImage",
-      "collectTraces",
-      "persistentLogs",
-      "createdAt",
-      "managedServiceId"
-    ], condition);
+    const rs = await this.db.selectMany("workspaceService.workspaces", [...LIST_COLS], condition);
     return rs.map(unsafeDbRecordToWorkspaceDbEntry);
   }
   async totalReplicasOfPlan(planId, teamId) {
@@ -74837,13 +74925,13 @@ var WorkspacesDAODatabase = class WorkspacesDAODatabase2 {
     }, this.db);
   }
   async getUserEmail(id, tx) {
-    const user2 = await tx.selectOne("authservice.credentials", ["email"], {
+    const user = await tx.selectOne("authservice.credentials", ["email"], {
       userId: id
     });
-    if (!user2) {
+    if (!user) {
       throw new NotFound(`Email for user ${id} not found.`);
     }
-    return user2.email;
+    return user.email;
   }
   async stopIdeServerUsage({ initiatorUserId, initiatorUserEmail, workspaceId, endDate }, tx) {
     await tx.update("workspaceService.serverUsage", {
@@ -74962,7 +75050,7 @@ var deleteWorkspace = async (workspaces, teamId, wsName) => {
     throw e;
   }
 };
-var createWorkspaceIfNotExist = async (workspaces, { teamId, planId, workspaceName: workspaceName2, gitUrl, isPrivateRepo, initialBranch, cloneDepth, vpnConfig, restricted, baseImage: baseImage2, envVars }) => {
+var createWorkspaceIfNotExist = async (workspaces, { teamId, planId, workspaceName: workspaceName2, gitUrl, isPrivateRepo, initialBranch, cloneDepth, skipLfs, recurseSubmodules, vpnConfig, restricted, baseImage: baseImage2, envVars }) => {
   try {
     return {
       ws: await workspaces.createWorkspace({
@@ -74973,6 +75061,8 @@ var createWorkspaceIfNotExist = async (workspaces, { teamId, planId, workspaceNa
         gitUrl,
         initialBranch,
         cloneDepth,
+        skipLfs,
+        recurseSubmodules,
         welcomeMessage: null,
         replicas: 1,
         sourceWorkspaceId: null,
@@ -75715,6 +75805,11 @@ var toEvent = toObject({
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist2(), 1);
 var addFormats = import_ajv_formats.default;
+var UpdateConstraint;
+(function(UpdateConstraint2) {
+  UpdateConstraint2["IncreaseOnly"] = "increase-only";
+  UpdateConstraint2["Immutable"] = "immutable";
+})(UpdateConstraint || (UpdateConstraint = {}));
 var SUPPORTED_FORMATS = [
   "int32",
   "int64",
@@ -75734,9 +75829,38 @@ var compile = (schema, options) => {
     strict: false,
     useDefaults: true,
     removeAdditional: options?.removeAdditional ?? false,
-    coerceTypes: options?.coerceTypes ?? false
+    coerceTypes: options?.coerceTypes ?? false,
+    passContext: true
   });
   addFormats(ajv, [...SUPPORTED_FORMATS]);
+  ajv.addKeyword({
+    keyword: "x-update-constraint",
+    validate: function(constraint, newValue, _, dataCxt) {
+      const key = dataCxt?.parentDataProperty;
+      if (!key) {
+        return true;
+      }
+      if (constraint === UpdateConstraint.IncreaseOnly) {
+        if (!this?.previousValues) {
+          return true;
+        }
+        const currentValue = this?.previousValues?.[key];
+        if (currentValue === void 0 || currentValue === null) {
+          return true;
+        }
+        return isNumber(newValue) && isNumber(currentValue) && newValue >= currentValue;
+      }
+      if (constraint === UpdateConstraint.Immutable) {
+        const prevValue = this?.previousValues?.[key];
+        if (prevValue === void 0 || prevValue === null) {
+          return true;
+        }
+        return newValue === prevValue;
+      }
+      return true;
+    },
+    errors: true
+  });
   const validate = ajv.compile(schema);
   return { ajv, validate };
 };
@@ -75759,7 +75883,9 @@ var toPlanSelection = toObject({
   parameters: toRecord(toInteger)
 });
 var toCapabilities = toUndefOr(toObject({
-  pause: toUndefOr(toBoolean)
+  pause: toUndefOr(toBoolean),
+  backups: toUndefOr(toBoolean),
+  pointInTimeRecovery: toUndefOr(toBoolean)
 }));
 var toProviderScope = withDefault(toUndefOr(toLiteralUnion("ProviderScope", ["global", "team"])), () => "global");
 var toConfig = toRecord(toUnknown);
@@ -75784,12 +75910,33 @@ var immutablePropertiesConv = {
   provider: toProviderName,
   providerVersion: toProviderVersion
 };
+var toRecoveryRef = toOr(toObject({
+  id: toUuid
+}), toObject({
+  msId: toUuid,
+  time: toDate
+}));
+var toBackupDeleteRetentionDays = toRestrictedInteger("backup delete retention must be >= 1 day and <= 1 year", (n) => n >= 1 && n <= duration({ years: 1 }).asDays());
+var toBackupIntervalH = toRestrictedInteger("backup interval must be >= 1 hour and <= 1 month", (n) => n >= 1 && n <= duration({ months: 1 }).asHours());
+var toBackupConfig = toOr(toObject({
+  enabled: toLiteral(true),
+  deleteRetentionDays: toBackupDeleteRetentionDays,
+  intervalH: toBackupIntervalH
+}), toObject({
+  enabled: toLiteral(false),
+  deleteRetentionDays: toUndefOr(toBackupDeleteRetentionDays),
+  intervalH: toUndefOr(toBackupIntervalH)
+}));
 var toCreateManagedServiceArgs = toObject({
   ...immutablePropertiesConv,
   ...mutablePropertiesConv,
+  backups: toObject({
+    config: toBackupConfig
+  }),
   secrets: toSecrets,
   teamId: toNonNegativeInteger,
-  workspaceId: toUndefOr(toNonNegativeInteger)
+  workspaceId: toUndefOr(toNonNegativeInteger),
+  recoverFrom: toUndefOr(toRecoveryRef)
 });
 var toManagedServiceStatus = toOr(toObject({
   state: toLiteral("creating")
@@ -75814,8 +75961,18 @@ var toManagedServiceStatus = toOr(toObject({
 }), toObject({
   state: toLiteral("invalid provider")
 }));
+var toBackup = toObject({
+  id: toUuid,
+  scheduledAt: toDate,
+  initiatedAt: toUndefOr(toDate),
+  confirmedAt: toUndefOr(toDate)
+});
 var toManagedService = toObject({
   id: toUuid,
+  backups: toObject({
+    config: toBackupConfig,
+    entries: toArray(toBackup)
+  }),
   creatorId: toInteger,
   ...immutablePropertiesConv,
   ...mutablePropertiesConv,
@@ -75826,6 +75983,13 @@ var toManagedService = toObject({
 });
 var toUpdateManagedServiceArgs = toObject({
   id: toUuid,
+  backups: toUndefOr(toObject({
+    config: toUndefOr(toObject({
+      enabled: toUndefOr(toBoolean),
+      deleteRetentionDays: toUndefOr(toPositiveInteger),
+      intervalH: toUndefOr(toPositiveInteger)
+    }))
+  })),
   config: toUndefOr(toRecord(toUnknown)),
   name: toUndefOr(toString),
   pause: toUndefOr(toBoolean),
@@ -75847,9 +76011,9 @@ var toManagedServicePlan = toObject({
       "cpu-tenths",
       "free",
       "network-bandwidth-mbps",
-      "ram-mb",
+      "ram-mib",
       "replicas",
-      "storage-mb"
+      "storage-mib"
     ])),
     schema: toSchemaObject
   })),
@@ -76070,22 +76234,34 @@ var toSyncLandscapeArgs = toObject({
   workspaceId: toNonNegativeInteger,
   landscape: toDeployStage
 });
+var toHeadlessServiceNetwork = toObject({
+  path: toUrlPath,
+  stripPath: toBoolean,
+  target: toString
+});
 var toLandscapeNetwork = toObject({
   servers: toRecord(toServerNetwork),
+  headlessServices: toUndefOr(toRecord(toArray(toHeadlessServiceNetwork))),
   routerReplicas: toNumber
 });
-var LandscapeStatusKind;
-(function(LandscapeStatusKind2) {
-  LandscapeStatusKind2["Syncing"] = "Syncing";
-  LandscapeStatusKind2["Synced"] = "Synced";
-  LandscapeStatusKind2["TearingDown"] = "TearingDown";
-  LandscapeStatusKind2["TornDown"] = "TornDown";
-  LandscapeStatusKind2["Error"] = "Error";
-})(LandscapeStatusKind || (LandscapeStatusKind = {}));
-var toLandscapeStatus2 = toOr(toObject({ kind: toLiteral(LandscapeStatusKind.Syncing), details: toString }), toObject({ kind: toLiteral(LandscapeStatusKind.Synced) }), toObject({
-  kind: toLiteral(LandscapeStatusKind.TearingDown),
+var LandscapeDeployStatusKind;
+(function(LandscapeDeployStatusKind2) {
+  LandscapeDeployStatusKind2["Syncing"] = "Syncing";
+  LandscapeDeployStatusKind2["Synced"] = "Synced";
+  LandscapeDeployStatusKind2["TearingDown"] = "TearingDown";
+  LandscapeDeployStatusKind2["TornDown"] = "TornDown";
+  LandscapeDeployStatusKind2["Error"] = "Error";
+})(LandscapeDeployStatusKind || (LandscapeDeployStatusKind = {}));
+var toLandscapeDeployStatus = toOr(toObject({
+  kind: toLiteral(LandscapeDeployStatusKind.Syncing),
   details: toString
-}), toObject({ kind: toLiteral(LandscapeStatusKind.TornDown) }), toObject({ kind: toLiteral(LandscapeStatusKind.Error), details: toString }));
+}), toObject({ kind: toLiteral(LandscapeDeployStatusKind.Synced) }), toObject({
+  kind: toLiteral(LandscapeDeployStatusKind.TearingDown),
+  details: toString
+}), toObject({ kind: toLiteral(LandscapeDeployStatusKind.TornDown) }), toObject({
+  kind: toLiteral(LandscapeDeployStatusKind.Error),
+  details: toString
+}));
 var landscapeService = {
   name: "landscape",
   context: toHttpContext,
@@ -76162,6 +76338,8 @@ LandscapeStub = __decorate21([
 
 // packages/integrations/lib/deploy.js
 var DEFAULT_PLAN_TITLE = "Boost";
+var deploymentLinkTypes = ["dev-domain", "preview"];
+var toDeploymentLinkType = toUndefOr(toNullOr(toLiteralUnion("DeploymentLinkType", deploymentLinkTypes)));
 var GetBrowserConfigFailed = class extends Exception {
   constructor(msg) {
     super(msg);
@@ -76169,6 +76347,10 @@ var GetBrowserConfigFailed = class extends Exception {
 };
 var codesphereWorkspaceUrl = (apiUrl, w) => {
   return new URL(import_path4.default.posix.join(apiUrl.pathname, `/ide/teams/${w.teamId}/workspaces/${w.id}`), apiUrl);
+};
+var codespherePreviewUrl = (apiUrl, w) => {
+  const wsUrl = codesphereWorkspaceUrl(apiUrl, w);
+  return new URL(`${wsUrl.pathname}/preview`, wsUrl);
 };
 var bootstrapRepoUrl = "https://github.com/codesphere-cloud/OnPrem-Bootstrap-Repo";
 var bootstrapRepoBranch = "main";
@@ -76345,6 +76527,8 @@ var createDeployment = async (creds, team2, c, status, serviceUrlDc) => {
         isPrivateRepo: c.repository.private,
         initialBranch: useBootstrapRepo ? bootstrapRepoBranch : c.pullRequest.branch,
         cloneDepth: c.cloneDepth,
+        skipLfs: c.skipLfs,
+        recurseSubmodules: c.recurseSubmodules,
         runPrepareOnCreation: useBootstrapRepo,
         vpnConfig: c.vpnConfigName
       });
@@ -76361,20 +76545,32 @@ var createDeployment = async (creds, team2, c, status, serviceUrlDc) => {
         });
       }
       await runWorkspacePipeline(pipeline, w, c.profile);
-      const { workspaceHostingBaseDomain } = await fromReplyRethrowing(() => config.getBrowserConfig(), (e) => new GetBrowserConfigFailed(e.message));
-      await status.setDeployed(`https://${workspaceDevDomain(w.id, workspaceHostingBaseDomain)}`);
+      const environmentUrl = await getEnvironmentUrl(c, w, config);
+      await status.setDeployed(environmentUrl);
     });
   } catch (e) {
     await logErrorAsync(() => status.setFailed("Deployment to Codesphere failed."));
     throw e;
   }
 };
+var getEnvironmentUrl = async (c, w, config) => {
+  if (c.deploymentLinkType === "preview") {
+    return codespherePreviewUrl(c.apiUrl, w).toString();
+  }
+  const { workspaceHostingBaseDomain } = await fromReplyRethrowing(() => config.getBrowserConfig(), (e) => new GetBrowserConfigFailed(e.message));
+  return `https://${workspaceDevDomain(w.id, workspaceHostingBaseDomain)}`;
+};
 var isProviderSupported = async (repo, gitStub) => {
   const repoUrl = new URL(repo.url);
   repoUrl.username = "";
   repoUrl.password = "";
   const providers = await gitStub.getSupportedGitProviders();
-  return providers.some((s) => repoUrl.toString().startsWith(s.url));
+  return providers.some((provider) => {
+    const p = new URL(provider.url);
+    if (repoUrl.hostname === p.hostname && repoUrl.pathname.startsWith(p.pathname)) {
+      return true;
+    }
+  });
 };
 var removeDeployment = async (creds, team2, c, status, serviceUrlDc) => {
   await status.setInactive();
@@ -76403,6 +76599,7 @@ var getConfig = async () => {
   const config = await fetchGitHubActionPrConfig();
   const envVars = (0, import_dotenv.parse)(getActionInput("env") ?? "");
   const cloneDepth = getActionInput("cloneDepth");
+  const recurseSubmodules = getActionInput("recurseSubmodules") ?? "true";
   return {
     ...config,
     repository: {
@@ -76417,8 +76614,11 @@ var getConfig = async () => {
     onDemand: "true" === getActionInput("onDemand"),
     restricted: "true" === getActionInput("restricted"),
     cloneDepth: cloneDepth ? Number(cloneDepth) : void 0,
+    skipLfs: "true" === getActionInput("skipLfs"),
+    recurseSubmodules: "true" === recurseSubmodules,
     envVars,
     vpnConfigName: getActionInput("vpnConfig") ?? void 0,
+    deploymentLinkType: toDeploymentLinkType(getActionInput("deploymentLinkType")),
     authentication: {
       email: getActionInput("email", true),
       password: getActionInput("password", true)
