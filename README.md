@@ -9,10 +9,6 @@ This action creates a preview environment of your repository in Codesphere.
 
 ## Inputs
 
-### `apiUrl`
-
-Base domain of the target Codesphere instance (with https://), e.g. `https://codesphere.com`, or `https://my-custom-codesphere.com`
-
 ### `email`
 
 **Required** email of the codesphere user.
@@ -36,6 +32,22 @@ Available options:
 
 Default `"Boost"`.
 
+### `onDemand`
+
+Use a Codesphere onDemand workspace that shuts down if unused.
+
+Default `"false"`.
+
+### `restricted`
+
+Whether the dev domain of the workspace is restricted to team members of the workspace or public.
+
+Default `"false"`.
+
+### `cloneDepth`
+
+Whether the repository clone should be shallow or not.
+
 ### `env`
 
 Set environment variables in your workspace.
@@ -47,6 +59,10 @@ See https://www.npmjs.com/package/dotenv for details.
 
 Name of the vpn config the workspace should connect to.
 The vpn configuration has to be configured in the team before.
+
+### `apiUrl`
+
+Base domain of the target Codesphere instance (with https://), e.g. `https://codesphere.com`, or `https://my-custom-codesphere.com`
 
 
 ## Example usage
