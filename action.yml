@@ -18,7 +18,7 @@ inputs:
     required: true
   plan:
     description: |
-      Plan of the created workspace. 
+      Plan of the created workspace.
 
       Available options:
       - Micro
@@ -31,7 +31,7 @@ inputs:
     required: false
     default: 'false'
   restricted:
-    description: | 
+    description: |
       Wheter the dev domain of the workspace is restricted to team members of
       the workspace or public.
     required: false
@@ -42,7 +42,7 @@ inputs:
   env:
     description: |
       Set environment variables in your workspace.
-      
+
       Use dotenv like environment variables definition.
       See https://www.npmjs.com/package/dotenv for details.
     required: false

@@ -23,7 +23,7 @@ This action creates a preview environment of your repository in Codesphere.
 
 ### `plan`
 
-Plan of the created workspace. 
+Plan of the created workspace.
 
 Available options:
 - Micro
@@ -51,7 +51,7 @@ Whether the repository clone should be shallow or not.
 ### `env`
 
 Set environment variables in your workspace.
-      
+
 Use dotenv like environment variables definition.
 See https://www.npmjs.com/package/dotenv for details.
 
