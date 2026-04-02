@@ -3347,14 +3347,14 @@ var require_templates = __commonJS({
       return results;
     }
     function buildStyle(chalk2, styles) {
-      const enabled2 = {};
+      const enabled3 = {};
       for (const layer of styles) {
         for (const style of layer.styles) {
-          enabled2[style[0]] = layer.inverse ? null : style.slice(1);
+          enabled3[style[0]] = layer.inverse ? null : style.slice(1);
         }
       }
       let current = chalk2;
-      for (const [styleName, styles2] of Object.entries(enabled2)) {
+      for (const [styleName, styles2] of Object.entries(enabled3)) {
         if (!Array.isArray(styles2)) {
           continue;
         }
@@ -4200,6 +4200,21 @@ var require_errors = __commonJS({
       }
       [kSecureProxyConnectionError] = true;
     };
+    var kMessageSizeExceededError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED");
+    var MessageSizeExceededError = class extends UndiciError {
+      constructor(message) {
+        super(message);
+        this.name = "MessageSizeExceededError";
+        this.message = message || "Max decompressed message size exceeded";
+        this.code = "UND_ERR_WS_MESSAGE_SIZE_EXCEEDED";
+      }
+      static [Symbol.hasInstance](instance) {
+        return instance && instance[kMessageSizeExceededError] === true;
+      }
+      get [kMessageSizeExceededError]() {
+        return true;
+      }
+    };
     module2.exports = {
       AbortError,
       HTTPParserError,
@@ -4223,7 +4238,8 @@ var require_errors = __commonJS({
       ResponseExceededMaxSizeError,
       RequestRetryError,
       ResponseError,
-      SecureProxyConnectionError
+      SecureProxyConnectionError,
+      MessageSizeExceededError
     };
   }
 });
@@ -5233,6 +5249,9 @@ var require_request = __commonJS({
         if (upgrade && typeof upgrade !== "string") {
           throw new InvalidArgumentError("upgrade must be a string");
         }
+        if (upgrade && !isValidHeaderValue(upgrade)) {
+          throw new InvalidArgumentError("invalid upgrade header");
+        }
         if (headersTimeout != null && (!Number.isFinite(headersTimeout) || headersTimeout < 0)) {
           throw new InvalidArgumentError("invalid headersTimeout");
         }
@@ -5465,12 +5484,18 @@ var require_request = __commonJS({
       } else {
         val = `${val}`;
       }
-      if (request2.host === null && headerName === "host") {
+      if (headerName === "host") {
+        if (request2.host !== null) {
+          throw new InvalidArgumentError("duplicate host header");
+        }
         if (typeof val !== "string") {
           throw new InvalidArgumentError("invalid host header");
         }
         request2.host = val;
-      } else if (request2.contentLength === null && headerName === "content-length") {
+      } else if (headerName === "content-length") {
+        if (request2.contentLength !== null) {
+          throw new InvalidArgumentError("duplicate content-length header");
+        }
         request2.contentLength = parseInt(val, 10);
         if (!Number.isFinite(request2.contentLength)) {
           throw new InvalidArgumentError("invalid content-length header");
@@ -20242,13 +20267,17 @@ var require_util8 = __commonJS({
       return extensionList;
     }
     function isValidClientWindowBits(value) {
+      if (value.length === 0) {
+        return false;
+      }
       for (let i = 0; i < value.length; i++) {
         const byte = value.charCodeAt(i);
         if (byte < 48 || byte > 57) {
           return false;
         }
       }
-      return true;
+      const num = Number.parseInt(value, 10);
+      return num >= 8 && num <= 15;
     }
     var hasIntl = typeof process.versions.icu === "string";
     var fatalDecoder = hasIntl ? new TextDecoder("utf-8", { fatal: true }) : void 0;
@@ -20547,18 +20576,31 @@ var require_permessage_deflate = __commonJS({
     "use strict";
     var { createInflateRaw, Z_DEFAULT_WINDOWBITS } = require("node:zlib");
     var { isValidClientWindowBits } = require_util8();
+    var { MessageSizeExceededError } = require_errors();
     var tail = Buffer.from([0, 0, 255, 255]);
     var kBuffer = /* @__PURE__ */ Symbol("kBuffer");
     var kLength = /* @__PURE__ */ Symbol("kLength");
+    var kDefaultMaxDecompressedSize = 4 * 1024 * 1024;
     var PerMessageDeflate = class {
       /** @type {import('node:zlib').InflateRaw} */
       #inflate;
       #options = {};
+      /** @type {boolean} */
+      #aborted = false;
+      /** @type {Function|null} */
+      #currentCallback = null;
+      /**
+       * @param {Map<string, string>} extensions
+       */
       constructor(extensions) {
         this.#options.serverNoContextTakeover = extensions.has("server_no_context_takeover");
         this.#options.serverMaxWindowBits = extensions.get("server_max_window_bits");
       }
       decompress(chunk, fin, callback) {
+        if (this.#aborted) {
+          callback(new MessageSizeExceededError());
+          return;
+        }
         if (!this.#inflate) {
           let windowBits = Z_DEFAULT_WINDOWBITS;
           if (this.#options.serverMaxWindowBits) {
@@ -20568,26 +20610,51 @@ var require_permessage_deflate = __commonJS({
             }
             windowBits = Number.parseInt(this.#options.serverMaxWindowBits);
           }
-          this.#inflate = createInflateRaw({ windowBits });
+          try {
+            this.#inflate = createInflateRaw({ windowBits });
+          } catch (err) {
+            callback(err);
+            return;
+          }
           this.#inflate[kBuffer] = [];
           this.#inflate[kLength] = 0;
           this.#inflate.on("data", (data) => {
-            this.#inflate[kBuffer].push(data);
+            if (this.#aborted) {
+              return;
+            }
             this.#inflate[kLength] += data.length;
+            if (this.#inflate[kLength] > kDefaultMaxDecompressedSize) {
+              this.#aborted = true;
+              this.#inflate.removeAllListeners();
+              this.#inflate.destroy();
+              this.#inflate = null;
+              if (this.#currentCallback) {
+                const cb = this.#currentCallback;
+                this.#currentCallback = null;
+                cb(new MessageSizeExceededError());
+              }
+              return;
+            }
+            this.#inflate[kBuffer].push(data);
           });
           this.#inflate.on("error", (err) => {
             this.#inflate = null;
             callback(err);
           });
         }
+        this.#currentCallback = callback;
         this.#inflate.write(chunk);
         if (fin) {
           this.#inflate.write(tail);
         }
         this.#inflate.flush(() => {
+          if (this.#aborted || !this.#inflate) {
+            return;
+          }
           const full = Buffer.concat(this.#inflate[kBuffer], this.#inflate[kLength]);
           this.#inflate[kBuffer].length = 0;
           this.#inflate[kLength] = 0;
+          this.#currentCallback = null;
           callback(null, full);
         });
       }
@@ -20627,6 +20694,10 @@ var require_receiver = __commonJS({
       #fragments = [];
       /** @type {Map<string, PerMessageDeflate>} */
       #extensions;
+      /**
+       * @param {import('./websocket').WebSocket} ws
+       * @param {Map<string, string>|null} extensions
+       */
       constructor(ws, extensions) {
         super();
         this.ws = ws;
@@ -20730,12 +20801,12 @@ var require_receiver = __commonJS({
             }
             const buffer = this.consume(8);
             const upper = buffer.readUInt32BE(0);
-            if (upper > 2 ** 31 - 1) {
+            const lower = buffer.readUInt32BE(4);
+            if (upper !== 0 || lower > 2 ** 31 - 1) {
               failWebsocketConnection(this.ws, "Received payload length > 2^31 bytes.");
               return;
             }
-            const lower = buffer.readUInt32BE(4);
-            this.#info.payloadLength = (upper << 8) + lower;
+            this.#info.payloadLength = lower;
             this.#state = parserStates.READ_DATA;
           } else if (this.#state === parserStates.READ_DATA) {
             if (this.#byteOffset < this.#info.payloadLength) {
@@ -20757,7 +20828,7 @@ var require_receiver = __commonJS({
               } else {
                 this.#extensions.get("permessage-deflate").decompress(body, this.#info.fin, (error, data) => {
                   if (error) {
-                    closeWebSocketConnection(this.ws, 1007, error.message, error.message.length);
+                    failWebsocketConnection(this.ws, error.message);
                     return;
                   }
                   this.#fragments.push(data);
@@ -22531,6 +22602,21 @@ var require_errors2 = __commonJS({
       }
       [kSecureProxyConnectionError] = true;
     };
+    var kMessageSizeExceededError = /* @__PURE__ */ Symbol.for("undici.error.UND_ERR_WS_MESSAGE_SIZE_EXCEEDED");
+    var MessageSizeExceededError = class extends UndiciError {
+      constructor(message) {
+        super(message);
+        this.name = "MessageSizeExceededError";
+        this.message = message || "Max decompressed message size exceeded";
+        this.code = "UND_ERR_WS_MESSAGE_SIZE_EXCEEDED";
+      }
+      static [Symbol.hasInstance](instance) {
+        return instance && instance[kMessageSizeExceededError] === true;
+      }
+      get [kMessageSizeExceededError]() {
+        return true;
+      }
+    };
     module2.exports = {
       AbortError,
       HTTPParserError,
@@ -22554,7 +22640,8 @@ var require_errors2 = __commonJS({
       ResponseExceededMaxSizeError,
       RequestRetryError,
       ResponseError,
-      SecureProxyConnectionError
+      SecureProxyConnectionError,
+      MessageSizeExceededError
     };
   }
 });
@@ -23564,6 +23651,9 @@ var require_request3 = __commonJS({
         if (upgrade && typeof upgrade !== "string") {
           throw new InvalidArgumentError("upgrade must be a string");
         }
+        if (upgrade && !isValidHeaderValue(upgrade)) {
+          throw new InvalidArgumentError("invalid upgrade header");
+        }
         if (headersTimeout != null && (!Number.isFinite(headersTimeout) || headersTimeout < 0)) {
           throw new InvalidArgumentError("invalid headersTimeout");
         }
@@ -23796,12 +23886,18 @@ var require_request3 = __commonJS({
       } else {
         val = `${val}`;
       }
-      if (request2.host === null && headerName === "host") {
+      if (headerName === "host") {
+        if (request2.host !== null) {
+          throw new InvalidArgumentError("duplicate host header");
+        }
         if (typeof val !== "string") {
           throw new InvalidArgumentError("invalid host header");
         }
         request2.host = val;
-      } else if (request2.contentLength === null && headerName === "content-length") {
+      } else if (headerName === "content-length") {
+        if (request2.contentLength !== null) {
+          throw new InvalidArgumentError("duplicate content-length header");
+        }
         request2.contentLength = parseInt(val, 10);
         if (!Number.isFinite(request2.contentLength)) {
           throw new InvalidArgumentError("invalid content-length header");
@@ -38573,13 +38669,17 @@ var require_util16 = __commonJS({
       return extensionList;
     }
     function isValidClientWindowBits(value) {
+      if (value.length === 0) {
+        return false;
+      }
       for (let i = 0; i < value.length; i++) {
         const byte = value.charCodeAt(i);
         if (byte < 48 || byte > 57) {
           return false;
         }
       }
-      return true;
+      const num = Number.parseInt(value, 10);
+      return num >= 8 && num <= 15;
     }
     var hasIntl = typeof process.versions.icu === "string";
     var fatalDecoder = hasIntl ? new TextDecoder("utf-8", { fatal: true }) : void 0;
@@ -38878,18 +38978,31 @@ var require_permessage_deflate2 = __commonJS({
     "use strict";
     var { createInflateRaw, Z_DEFAULT_WINDOWBITS } = require("node:zlib");
     var { isValidClientWindowBits } = require_util16();
+    var { MessageSizeExceededError } = require_errors2();
     var tail = Buffer.from([0, 0, 255, 255]);
     var kBuffer = /* @__PURE__ */ Symbol("kBuffer");
     var kLength = /* @__PURE__ */ Symbol("kLength");
+    var kDefaultMaxDecompressedSize = 4 * 1024 * 1024;
     var PerMessageDeflate = class {
       /** @type {import('node:zlib').InflateRaw} */
       #inflate;
       #options = {};
+      /** @type {boolean} */
+      #aborted = false;
+      /** @type {Function|null} */
+      #currentCallback = null;
+      /**
+       * @param {Map<string, string>} extensions
+       */
       constructor(extensions) {
         this.#options.serverNoContextTakeover = extensions.has("server_no_context_takeover");
         this.#options.serverMaxWindowBits = extensions.get("server_max_window_bits");
       }
       decompress(chunk, fin, callback) {
+        if (this.#aborted) {
+          callback(new MessageSizeExceededError());
+          return;
+        }
         if (!this.#inflate) {
           let windowBits = Z_DEFAULT_WINDOWBITS;
           if (this.#options.serverMaxWindowBits) {
@@ -38899,26 +39012,51 @@ var require_permessage_deflate2 = __commonJS({
             }
             windowBits = Number.parseInt(this.#options.serverMaxWindowBits);
           }
-          this.#inflate = createInflateRaw({ windowBits });
+          try {
+            this.#inflate = createInflateRaw({ windowBits });
+          } catch (err) {
+            callback(err);
+            return;
+          }
           this.#inflate[kBuffer] = [];
           this.#inflate[kLength] = 0;
           this.#inflate.on("data", (data) => {
-            this.#inflate[kBuffer].push(data);
+            if (this.#aborted) {
+              return;
+            }
             this.#inflate[kLength] += data.length;
+            if (this.#inflate[kLength] > kDefaultMaxDecompressedSize) {
+              this.#aborted = true;
+              this.#inflate.removeAllListeners();
+              this.#inflate.destroy();
+              this.#inflate = null;
+              if (this.#currentCallback) {
+                const cb = this.#currentCallback;
+                this.#currentCallback = null;
+                cb(new MessageSizeExceededError());
+              }
+              return;
+            }
+            this.#inflate[kBuffer].push(data);
           });
           this.#inflate.on("error", (err) => {
             this.#inflate = null;
             callback(err);
           });
         }
+        this.#currentCallback = callback;
         this.#inflate.write(chunk);
         if (fin) {
           this.#inflate.write(tail);
         }
         this.#inflate.flush(() => {
+          if (this.#aborted || !this.#inflate) {
+            return;
+          }
           const full = Buffer.concat(this.#inflate[kBuffer], this.#inflate[kLength]);
           this.#inflate[kBuffer].length = 0;
           this.#inflate[kLength] = 0;
+          this.#currentCallback = null;
           callback(null, full);
         });
       }
@@ -38958,6 +39096,10 @@ var require_receiver2 = __commonJS({
       #fragments = [];
       /** @type {Map<string, PerMessageDeflate>} */
       #extensions;
+      /**
+       * @param {import('./websocket').WebSocket} ws
+       * @param {Map<string, string>|null} extensions
+       */
       constructor(ws, extensions) {
         super();
         this.ws = ws;
@@ -39061,12 +39203,12 @@ var require_receiver2 = __commonJS({
             }
             const buffer = this.consume(8);
             const upper = buffer.readUInt32BE(0);
-            if (upper > 2 ** 31 - 1) {
+            const lower = buffer.readUInt32BE(4);
+            if (upper !== 0 || lower > 2 ** 31 - 1) {
               failWebsocketConnection(this.ws, "Received payload length > 2^31 bytes.");
               return;
             }
-            const lower = buffer.readUInt32BE(4);
-            this.#info.payloadLength = (upper << 8) + lower;
+            this.#info.payloadLength = lower;
             this.#state = parserStates.READ_DATA;
           } else if (this.#state === parserStates.READ_DATA) {
             if (this.#byteOffset < this.#info.payloadLength) {
@@ -39088,7 +39230,7 @@ var require_receiver2 = __commonJS({
               } else {
                 this.#extensions.get("permessage-deflate").decompress(body, this.#info.fin, (error, data) => {
                   if (error) {
-                    closeWebSocketConnection(this.ws, 1007, error.message, error.message.length);
+                    failWebsocketConnection(this.ws, error.message);
                     return;
                   }
                   this.#fragments.push(data);
@@ -56928,13 +57070,13 @@ var require_boolSchema = __commonJS({
       }
     }
     exports2.topBoolOrEmptySchema = topBoolOrEmptySchema;
-    function boolOrEmptySchema(it, valid) {
+    function boolOrEmptySchema(it, valid2) {
       const { gen, schema } = it;
       if (schema === false) {
-        gen.var(valid, false);
+        gen.var(valid2, false);
         falseSchemaError(it);
       } else {
-        gen.var(valid, true);
+        gen.var(valid2, true);
       }
     }
     exports2.boolOrEmptySchema = boolOrEmptySchema;
@@ -57315,15 +57457,15 @@ var require_code2 = __commonJS({
     exports2.usePattern = usePattern;
     function validateArray(cxt) {
       const { gen, data, keyword, it } = cxt;
-      const valid = gen.name("valid");
+      const valid2 = gen.name("valid");
       if (it.allErrors) {
         const validArr = gen.let("valid", true);
         validateItems(() => gen.assign(validArr, false));
         return validArr;
       }
-      gen.var(valid, true);
+      gen.var(valid2, true);
       validateItems(() => gen.break());
-      return valid;
+      return valid2;
       function validateItems(notValid) {
         const len = gen.const("len", (0, codegen_1._)`${data}.length`);
         gen.forRange("i", 0, len, (i) => {
@@ -57331,8 +57473,8 @@ var require_code2 = __commonJS({
             keyword,
             dataProp: i,
             dataPropType: util_1.Type.Num
-          }, valid);
-          gen.if((0, codegen_1.not)(valid), notValid);
+          }, valid2);
+          gen.if((0, codegen_1.not)(valid2), notValid);
         });
       }
     }
@@ -57344,7 +57486,7 @@ var require_code2 = __commonJS({
       const alwaysValid = schema.some((sch) => (0, util_1.alwaysValidSchema)(it, sch));
       if (alwaysValid && !it.opts.unevaluated)
         return;
-      const valid = gen.let("valid", false);
+      const valid2 = gen.let("valid", false);
       const schValid = gen.name("_valid");
       gen.block(() => schema.forEach((_sch, i) => {
         const schCxt = cxt.subschema({
@@ -57352,12 +57494,12 @@ var require_code2 = __commonJS({
           schemaProp: i,
           compositeRule: true
         }, schValid);
-        gen.assign(valid, (0, codegen_1._)`${valid} || ${schValid}`);
+        gen.assign(valid2, (0, codegen_1._)`${valid2} || ${schValid}`);
         const merged = cxt.mergeValidEvaluated(schCxt, schValid);
         if (!merged)
-          gen.if((0, codegen_1.not)(valid));
+          gen.if((0, codegen_1.not)(valid2));
       }));
-      cxt.result(valid, () => cxt.reset(), () => cxt.error(true));
+      cxt.result(valid2, () => cxt.reset(), () => cxt.error(true));
     }
     exports2.validateUnion = validateUnion;
   }
@@ -57379,15 +57521,15 @@ var require_keyword = __commonJS({
       const schemaRef = useKeyword(gen, keyword, macroSchema);
       if (it.opts.validateSchema !== false)
         it.self.validateSchema(macroSchema, true);
-      const valid = gen.name("valid");
+      const valid2 = gen.name("valid");
       cxt.subschema({
         schema: macroSchema,
         schemaPath: codegen_1.nil,
         errSchemaPath: `${it.errSchemaPath}/${keyword}`,
         topSchemaRef: schemaRef,
         compositeRule: true
-      }, valid);
-      cxt.pass(valid, () => cxt.error(true));
+      }, valid2);
+      cxt.pass(valid2, () => cxt.error(true));
     }
     exports2.macroKeywordCode = macroKeywordCode;
     function funcKeywordCode(cxt, def) {
@@ -57396,9 +57538,9 @@ var require_keyword = __commonJS({
       checkAsyncKeyword(it, def);
       const validate = !$data && def.compile ? def.compile.call(it.self, schema, parentSchema, it) : def.validate;
       const validateRef = useKeyword(gen, keyword, validate);
-      const valid = gen.let("valid");
-      cxt.block$data(valid, validateKeyword);
-      cxt.ok((_a = def.valid) !== null && _a !== void 0 ? _a : valid);
+      const valid2 = gen.let("valid");
+      cxt.block$data(valid2, validateKeyword);
+      cxt.ok((_a = def.valid) !== null && _a !== void 0 ? _a : valid2);
       function validateKeyword() {
         if (def.errors === false) {
           assignValid();
@@ -57414,7 +57556,7 @@ var require_keyword = __commonJS({
       }
       function validateAsync() {
         const ruleErrs = gen.let("ruleErrs", null);
-        gen.try(() => assignValid((0, codegen_1._)`await `), (e) => gen.assign(valid, false).if((0, codegen_1._)`${e} instanceof ${it.ValidationError}`, () => gen.assign(ruleErrs, (0, codegen_1._)`${e}.errors`), () => gen.throw(e)));
+        gen.try(() => assignValid((0, codegen_1._)`await `), (e) => gen.assign(valid2, false).if((0, codegen_1._)`${e} instanceof ${it.ValidationError}`, () => gen.assign(ruleErrs, (0, codegen_1._)`${e}.errors`), () => gen.throw(e)));
         return ruleErrs;
       }
       function validateSync() {
@@ -57426,11 +57568,11 @@ var require_keyword = __commonJS({
       function assignValid(_await = def.async ? (0, codegen_1._)`await ` : codegen_1.nil) {
         const passCxt = it.opts.passContext ? names_1.default.this : names_1.default.self;
         const passSchema = !("compile" in def && !$data || def.schema === false);
-        gen.assign(valid, (0, codegen_1._)`${_await}${(0, code_1.callValidateCode)(cxt, validateRef, passCxt, passSchema)}`, def.modifying);
+        gen.assign(valid2, (0, codegen_1._)`${_await}${(0, code_1.callValidateCode)(cxt, validateRef, passCxt, passSchema)}`, def.modifying);
       }
       function reportErrs(errors) {
         var _a2;
-        gen.if((0, codegen_1.not)((_a2 = def.valid) !== null && _a2 !== void 0 ? _a2 : valid), errors);
+        gen.if((0, codegen_1.not)((_a2 = def.valid) !== null && _a2 !== void 0 ? _a2 : valid2), errors);
       }
     }
     exports2.funcKeywordCode = funcKeywordCode;
@@ -57467,8 +57609,8 @@ var require_keyword = __commonJS({
         throw new Error(`parent schema must have dependencies of ${keyword}: ${deps.join(",")}`);
       }
       if (def.validateSchema) {
-        const valid = def.validateSchema(schema[keyword]);
-        if (!valid) {
+        const valid2 = def.validateSchema(schema[keyword]);
+        if (!valid2) {
           const msg = `keyword "${keyword}" value is invalid at path "${errSchemaPath}": ` + self2.errorsText(def.validateSchema.errors);
           if (opts.validateSchema === "log")
             self2.logger.error(msg);
@@ -57893,15 +58035,15 @@ var require_validate = __commonJS({
       const schId = typeof schema == "object" && schema[opts.schemaId];
       return schId && (opts.code.source || opts.code.process) ? (0, codegen_1._)`/*# sourceURL=${schId} */` : codegen_1.nil;
     }
-    function subschemaCode(it, valid) {
+    function subschemaCode(it, valid2) {
       if (isSchemaObj(it)) {
         checkKeywords(it);
         if (schemaCxtHasRules(it)) {
-          subSchemaObjCode(it, valid);
+          subSchemaObjCode(it, valid2);
           return;
         }
       }
-      (0, boolSchema_1.boolOrEmptySchema)(it, valid);
+      (0, boolSchema_1.boolOrEmptySchema)(it, valid2);
     }
     function schemaCxtHasRules({ schema, self: self2 }) {
       if (typeof schema == "boolean")
@@ -57914,7 +58056,7 @@ var require_validate = __commonJS({
     function isSchemaObj(it) {
       return typeof it.schema != "boolean";
     }
-    function subSchemaObjCode(it, valid) {
+    function subSchemaObjCode(it, valid2) {
       const { schema, gen, opts } = it;
       if (opts.$comment && schema.$comment)
         commentKeyword(it);
@@ -57922,7 +58064,7 @@ var require_validate = __commonJS({
       checkAsyncSchema(it);
       const errsCount = gen.const("_errs", names_1.default.errors);
       typeAndKeywords(it, errsCount);
-      gen.var(valid, (0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
+      gen.var(valid2, (0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
     }
     function checkKeywords(it) {
       (0, util_1.checkUnknownRules)(it);
@@ -58189,24 +58331,24 @@ var require_validate = __commonJS({
         else
           this.params = obj;
       }
-      block$data(valid, codeBlock, $dataValid = codegen_1.nil) {
+      block$data(valid2, codeBlock, $dataValid = codegen_1.nil) {
         this.gen.block(() => {
-          this.check$data(valid, $dataValid);
+          this.check$data(valid2, $dataValid);
           codeBlock();
         });
       }
-      check$data(valid = codegen_1.nil, $dataValid = codegen_1.nil) {
+      check$data(valid2 = codegen_1.nil, $dataValid = codegen_1.nil) {
         if (!this.$data)
           return;
         const { gen, schemaCode, schemaType, def } = this;
         gen.if((0, codegen_1.or)((0, codegen_1._)`${schemaCode} === undefined`, $dataValid));
-        if (valid !== codegen_1.nil)
-          gen.assign(valid, true);
+        if (valid2 !== codegen_1.nil)
+          gen.assign(valid2, true);
         if (schemaType.length || def.validateSchema) {
           gen.elseIf(this.invalid$data());
           this.$dataError();
-          if (valid !== codegen_1.nil)
-            gen.assign(valid, false);
+          if (valid2 !== codegen_1.nil)
+            gen.assign(valid2, false);
         }
         gen.else();
       }
@@ -58230,12 +58372,12 @@ var require_validate = __commonJS({
           return codegen_1.nil;
         }
       }
-      subschema(appl, valid) {
+      subschema(appl, valid2) {
         const subschema = (0, subschema_1.getSubschema)(this.it, appl);
         (0, subschema_1.extendSubschemaData)(subschema, this.it, appl);
         (0, subschema_1.extendSubschemaMode)(subschema, appl);
         const nextContext = { ...this.it, ...subschema, items: void 0, props: void 0 };
-        subschemaCode(nextContext, valid);
+        subschemaCode(nextContext, valid2);
         return nextContext;
       }
       mergeEvaluated(schemaCxt, toName) {
@@ -58249,10 +58391,10 @@ var require_validate = __commonJS({
           it.items = util_1.mergeEvaluated.items(gen, schemaCxt.items, it.items, toName);
         }
       }
-      mergeValidEvaluated(schemaCxt, valid) {
+      mergeValidEvaluated(schemaCxt, valid2) {
         const { it, gen } = this;
         if (it.opts.unevaluated && (it.props !== true || it.items !== true)) {
-          gen.if(valid, () => this.mergeEvaluated(schemaCxt, codegen_1.Name));
+          gen.if(valid2, () => this.mergeEvaluated(schemaCxt, codegen_1.Name));
           return true;
         }
       }
@@ -59435,10 +59577,10 @@ var require_core = __commonJS({
         } else {
           v = this.compile(schemaKeyRef);
         }
-        const valid = v(data);
+        const valid2 = v(data);
         if (!("$async" in v))
           this.errors = v.errors;
-        return valid;
+        return valid2;
       }
       compile(schema, _meta) {
         const sch = this._addSchema(schema, _meta);
@@ -59535,15 +59677,15 @@ var require_core = __commonJS({
           this.errors = null;
           return true;
         }
-        const valid = this.validate($schema, schema);
-        if (!valid && throwOrLogError) {
+        const valid2 = this.validate($schema, schema);
+        if (!valid2 && throwOrLogError) {
           const message = "schema is invalid: " + this.errorsText();
           if (this.opts.validateSchema === "log")
             this.logger.error(message);
           else
             throw new Error(message);
         }
-        return valid;
+        return valid2;
       }
       // Get compiled schema by `key` or `ref`.
       // (`key` that was passed to `addSchema` or full schema reference - `schema.$id` or resolved id)
@@ -59936,16 +60078,16 @@ var require_ref = __commonJS({
         }
         function inlineRefSchema(sch) {
           const schName = gen.scopeValue("schema", opts.code.source === true ? { ref: sch, code: (0, codegen_1.stringify)(sch) } : { ref: sch });
-          const valid = gen.name("valid");
+          const valid2 = gen.name("valid");
           const schCxt = cxt.subschema({
             schema: sch,
             dataTypes: [],
             schemaPath: codegen_1.nil,
             topSchemaRef: schName,
             errSchemaPath: $ref
-          }, valid);
+          }, valid2);
           cxt.mergeEvaluated(schCxt);
-          cxt.ok(valid);
+          cxt.ok(valid2);
         }
       }
     };
@@ -59965,19 +60107,19 @@ var require_ref = __commonJS({
       function callAsyncRef() {
         if (!env.$async)
           throw new Error("async schema referenced by sync schema");
-        const valid = gen.let("valid");
+        const valid2 = gen.let("valid");
         gen.try(() => {
           gen.code((0, codegen_1._)`await ${(0, code_1.callValidateCode)(cxt, v, passCxt)}`);
           addEvaluatedFrom(v);
           if (!allErrors)
-            gen.assign(valid, true);
+            gen.assign(valid2, true);
         }, (e) => {
           gen.if((0, codegen_1._)`!(${e} instanceof ${it.ValidationError})`, () => gen.throw(e));
           addErrorsFrom(e);
           if (!allErrors)
-            gen.assign(valid, false);
+            gen.assign(valid2, false);
         });
-        cxt.ok(valid);
+        cxt.ok(valid2);
       }
       function callSyncRef() {
         cxt.result((0, code_1.callValidateCode)(cxt, v, passCxt), () => addEvaluatedFrom(v), () => addErrorsFrom(v));
@@ -60182,9 +60324,9 @@ var require_pattern = __commonJS({
         if ($data) {
           const { regExp } = it.opts.code;
           const regExpCode = regExp.code === "new RegExp" ? (0, codegen_1._)`new RegExp` : (0, util_1.useFunc)(gen, regExp);
-          const valid = gen.let("valid");
-          gen.try(() => gen.assign(valid, (0, codegen_1._)`${regExpCode}(${schemaCode}, ${u}).test(${data})`), () => gen.assign(valid, false));
-          cxt.fail$data((0, codegen_1._)`!${valid}`);
+          const valid2 = gen.let("valid");
+          gen.try(() => gen.assign(valid2, (0, codegen_1._)`${regExpCode}(${schemaCode}, ${u}).test(${data})`), () => gen.assign(valid2, false));
+          cxt.fail$data((0, codegen_1._)`!${valid2}`);
         } else {
           const regExp = (0, code_1.usePattern)(cxt, schema);
           cxt.fail$data((0, codegen_1._)`!${regExp}.test(${data})`);
@@ -60275,9 +60417,9 @@ var require_required = __commonJS({
         function exitOnErrorMode() {
           const missing = gen.let("missing");
           if (useLoop || $data) {
-            const valid = gen.let("valid", true);
-            cxt.block$data(valid, () => loopUntilMissing(missing, valid));
-            cxt.ok(valid);
+            const valid2 = gen.let("valid", true);
+            cxt.block$data(valid2, () => loopUntilMissing(missing, valid2));
+            cxt.ok(valid2);
           } else {
             gen.if((0, code_1.checkMissingProp)(cxt, schema, missing));
             (0, code_1.reportMissingProp)(cxt, missing);
@@ -60290,11 +60432,11 @@ var require_required = __commonJS({
             gen.if((0, code_1.noPropertyInData)(gen, data, prop, opts.ownProperties), () => cxt.error());
           });
         }
-        function loopUntilMissing(missing, valid) {
+        function loopUntilMissing(missing, valid2) {
           cxt.setParams({ missingProperty: missing });
           gen.forOf(missing, schemaCode, () => {
-            gen.assign(valid, (0, code_1.propertyInData)(gen, data, missing, opts.ownProperties));
-            gen.if((0, codegen_1.not)(valid), () => {
+            gen.assign(valid2, (0, code_1.propertyInData)(gen, data, missing, opts.ownProperties));
+            gen.if((0, codegen_1.not)(valid2), () => {
               cxt.error();
               gen.break();
             });
@@ -60369,15 +60511,15 @@ var require_uniqueItems = __commonJS({
         const { gen, data, $data, schema, parentSchema, schemaCode, it } = cxt;
         if (!$data && !schema)
           return;
-        const valid = gen.let("valid");
+        const valid2 = gen.let("valid");
         const itemTypes = parentSchema.items ? (0, dataType_1.getSchemaTypes)(parentSchema.items) : [];
-        cxt.block$data(valid, validateUniqueItems, (0, codegen_1._)`${schemaCode} === false`);
-        cxt.ok(valid);
+        cxt.block$data(valid2, validateUniqueItems, (0, codegen_1._)`${schemaCode} === false`);
+        cxt.ok(valid2);
         function validateUniqueItems() {
           const i = gen.let("i", (0, codegen_1._)`${data}.length`);
           const j = gen.let("j");
           cxt.setParams({ i, j });
-          gen.assign(valid, true);
+          gen.assign(valid2, true);
           gen.if((0, codegen_1._)`${i} > 1`, () => (canOptimize() ? loopN : loopN2)(i, j));
         }
         function canOptimize() {
@@ -60395,7 +60537,7 @@ var require_uniqueItems = __commonJS({
             gen.if((0, codegen_1._)`typeof ${indices}[${item}] == "number"`, () => {
               gen.assign(j, (0, codegen_1._)`${indices}[${item}]`);
               cxt.error();
-              gen.assign(valid, false).break();
+              gen.assign(valid2, false).break();
             }).code((0, codegen_1._)`${indices}[${item}] = ${i}`);
           });
         }
@@ -60404,7 +60546,7 @@ var require_uniqueItems = __commonJS({
           const outer = gen.name("outer");
           gen.label(outer).for((0, codegen_1._)`;${i}--;`, () => gen.for((0, codegen_1._)`${j} = ${i}; ${j}--;`, () => gen.if((0, codegen_1._)`${eql}(${data}[${i}], ${data}[${j}])`, () => {
             cxt.error();
-            gen.assign(valid, false).break(outer);
+            gen.assign(valid2, false).break(outer);
           })));
         }
       }
@@ -60466,20 +60608,20 @@ var require_enum = __commonJS({
         const useLoop = schema.length >= it.opts.loopEnum;
         let eql;
         const getEql = () => eql !== null && eql !== void 0 ? eql : eql = (0, util_1.useFunc)(gen, equal_1.default);
-        let valid;
+        let valid2;
         if (useLoop || $data) {
-          valid = gen.let("valid");
-          cxt.block$data(valid, loopEnum);
+          valid2 = gen.let("valid");
+          cxt.block$data(valid2, loopEnum);
         } else {
           if (!Array.isArray(schema))
             throw new Error("ajv implementation error");
           const vSchema = gen.const("vSchema", schemaCode);
-          valid = (0, codegen_1.or)(...schema.map((_x, i) => equalCode(vSchema, i)));
+          valid2 = (0, codegen_1.or)(...schema.map((_x, i) => equalCode(vSchema, i)));
         }
-        cxt.pass(valid);
+        cxt.pass(valid2);
         function loopEnum() {
-          gen.assign(valid, false);
-          gen.forOf("v", schemaCode, (v) => gen.if((0, codegen_1._)`${getEql()}(${data}, ${v})`, () => gen.assign(valid, true).break()));
+          gen.assign(valid2, false);
+          gen.forOf("v", schemaCode, (v) => gen.if((0, codegen_1._)`${getEql()}(${data}, ${v})`, () => gen.assign(valid2, true).break()));
         }
         function equalCode(vSchema, i) {
           const sch = schema[i];
@@ -60565,15 +60707,15 @@ var require_additionalItems = __commonJS({
         cxt.setParams({ len: items.length });
         cxt.pass((0, codegen_1._)`${len} <= ${items.length}`);
       } else if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
-        const valid = gen.var("valid", (0, codegen_1._)`${len} <= ${items.length}`);
-        gen.if((0, codegen_1.not)(valid), () => validateItems(valid));
-        cxt.ok(valid);
+        const valid2 = gen.var("valid", (0, codegen_1._)`${len} <= ${items.length}`);
+        gen.if((0, codegen_1.not)(valid2), () => validateItems(valid2));
+        cxt.ok(valid2);
       }
-      function validateItems(valid) {
+      function validateItems(valid2) {
         gen.forRange("i", items.length, len, (i) => {
-          cxt.subschema({ keyword, dataProp: i, dataPropType: util_1.Type.Num }, valid);
+          cxt.subschema({ keyword, dataProp: i, dataPropType: util_1.Type.Num }, valid2);
           if (!it.allErrors)
-            gen.if((0, codegen_1.not)(valid), () => gen.break());
+            gen.if((0, codegen_1.not)(valid2), () => gen.break());
         });
       }
     }
@@ -60612,7 +60754,7 @@ var require_items = __commonJS({
       if (it.opts.unevaluated && schArr.length && it.items !== true) {
         it.items = util_1.mergeEvaluated.items(gen, schArr.length, it.items);
       }
-      const valid = gen.name("valid");
+      const valid2 = gen.name("valid");
       const len = gen.const("len", (0, codegen_1._)`${data}.length`);
       schArr.forEach((sch, i) => {
         if ((0, util_1.alwaysValidSchema)(it, sch))
@@ -60621,8 +60763,8 @@ var require_items = __commonJS({
           keyword,
           schemaProp: i,
           dataProp: i
-        }, valid));
-        cxt.ok(valid);
+        }, valid2));
+        cxt.ok(valid2);
       });
       function checkStrictTuple(sch) {
         const { opts, errSchemaPath } = it;
@@ -60739,18 +60881,18 @@ var require_contains = __commonJS({
           return;
         }
         it.items = true;
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         if (max === void 0 && min === 1) {
-          validateItems(valid, () => gen.if(valid, () => gen.break()));
+          validateItems(valid2, () => gen.if(valid2, () => gen.break()));
         } else if (min === 0) {
-          gen.let(valid, true);
+          gen.let(valid2, true);
           if (max !== void 0)
             gen.if((0, codegen_1._)`${data}.length > 0`, validateItemsWithCount);
         } else {
-          gen.let(valid, false);
+          gen.let(valid2, false);
           validateItemsWithCount();
         }
-        cxt.result(valid, () => cxt.reset());
+        cxt.result(valid2, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
           const count = gen.let("count", 0);
@@ -60770,13 +60912,13 @@ var require_contains = __commonJS({
         function checkLimits(count) {
           gen.code((0, codegen_1._)`${count}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid2, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid2, false).break());
             if (min === 1)
-              gen.assign(valid, true);
+              gen.assign(valid2, true);
             else
-              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid2, true));
           }
         }
       }
@@ -60858,20 +61000,20 @@ var require_dependencies = __commonJS({
     exports2.validatePropertyDeps = validatePropertyDeps;
     function validateSchemaDeps(cxt, schemaDeps = cxt.schema) {
       const { gen, data, keyword, it } = cxt;
-      const valid = gen.name("valid");
+      const valid2 = gen.name("valid");
       for (const prop in schemaDeps) {
         if ((0, util_1.alwaysValidSchema)(it, schemaDeps[prop]))
           continue;
         gen.if(
           (0, code_1.propertyInData)(gen, data, prop, it.opts.ownProperties),
           () => {
-            const schCxt = cxt.subschema({ keyword, schemaProp: prop }, valid);
-            cxt.mergeValidEvaluated(schCxt, valid);
+            const schCxt = cxt.subschema({ keyword, schemaProp: prop }, valid2);
+            cxt.mergeValidEvaluated(schCxt, valid2);
           },
-          () => gen.var(valid, true)
+          () => gen.var(valid2, true)
           // TODO var
         );
-        cxt.ok(valid);
+        cxt.ok(valid2);
       }
     }
     exports2.validateSchemaDeps = validateSchemaDeps;
@@ -60899,7 +61041,7 @@ var require_propertyNames = __commonJS({
         const { gen, schema, data, it } = cxt;
         if ((0, util_1.alwaysValidSchema)(it, schema))
           return;
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         gen.forIn("key", data, (key) => {
           cxt.setParams({ propertyName: key });
           cxt.subschema({
@@ -60908,14 +61050,14 @@ var require_propertyNames = __commonJS({
             dataTypes: ["string"],
             propertyName: key,
             compositeRule: true
-          }, valid);
-          gen.if((0, codegen_1.not)(valid), () => {
+          }, valid2);
+          gen.if((0, codegen_1.not)(valid2), () => {
             cxt.error(true);
             if (!it.allErrors)
               gen.break();
           });
         });
-        cxt.ok(valid);
+        cxt.ok(valid2);
       }
     };
     exports2.default = def;
@@ -60993,21 +61135,21 @@ var require_additionalProperties = __commonJS({
             return;
           }
           if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
-            const valid = gen.name("valid");
+            const valid2 = gen.name("valid");
             if (opts.removeAdditional === "failing") {
-              applyAdditionalSchema(key, valid, false);
-              gen.if((0, codegen_1.not)(valid), () => {
+              applyAdditionalSchema(key, valid2, false);
+              gen.if((0, codegen_1.not)(valid2), () => {
                 cxt.reset();
                 deleteAdditional(key);
               });
             } else {
-              applyAdditionalSchema(key, valid);
+              applyAdditionalSchema(key, valid2);
               if (!allErrors)
-                gen.if((0, codegen_1.not)(valid), () => gen.break());
+                gen.if((0, codegen_1.not)(valid2), () => gen.break());
             }
           }
         }
-        function applyAdditionalSchema(key, valid, errors) {
+        function applyAdditionalSchema(key, valid2, errors) {
           const subschema = {
             keyword: "additionalProperties",
             dataProp: key,
@@ -61020,7 +61162,7 @@ var require_additionalProperties = __commonJS({
               allErrors: false
             });
           }
-          cxt.subschema(subschema, valid);
+          cxt.subschema(subschema, valid2);
         }
       }
     };
@@ -61056,7 +61198,7 @@ var require_properties = __commonJS({
         const properties = allProps.filter((p) => !(0, util_1.alwaysValidSchema)(it, schema[p]));
         if (properties.length === 0)
           return;
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         for (const prop of properties) {
           if (hasDefault(prop)) {
             applyPropertySchema(prop);
@@ -61064,11 +61206,11 @@ var require_properties = __commonJS({
             gen.if((0, code_1.propertyInData)(gen, data, prop, it.opts.ownProperties));
             applyPropertySchema(prop);
             if (!it.allErrors)
-              gen.else().var(valid, true);
+              gen.else().var(valid2, true);
             gen.endIf();
           }
           cxt.it.definedProperties.add(prop);
-          cxt.ok(valid);
+          cxt.ok(valid2);
         }
         function hasDefault(prop) {
           return it.opts.useDefaults && !it.compositeRule && schema[prop].default !== void 0;
@@ -61078,7 +61220,7 @@ var require_properties = __commonJS({
             keyword: "properties",
             schemaProp: prop,
             dataProp: prop
-          }, valid);
+          }, valid2);
         }
       }
     };
@@ -61108,7 +61250,7 @@ var require_patternProperties = __commonJS({
           return;
         }
         const checkProperties = opts.strictSchema && !opts.allowMatchingProperties && parentSchema.properties;
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         if (it.props !== true && !(it.props instanceof codegen_1.Name)) {
           it.props = (0, util_2.evaluatedPropsToName)(gen, it.props);
         }
@@ -61121,9 +61263,9 @@ var require_patternProperties = __commonJS({
             if (it.allErrors) {
               validateProperties(pat);
             } else {
-              gen.var(valid, true);
+              gen.var(valid2, true);
               validateProperties(pat);
-              gen.if(valid);
+              gen.if(valid2);
             }
           }
         }
@@ -61144,12 +61286,12 @@ var require_patternProperties = __commonJS({
                   schemaProp: pat,
                   dataProp: key,
                   dataPropType: util_2.Type.Str
-                }, valid);
+                }, valid2);
               }
               if (it.opts.unevaluated && props !== true) {
                 gen.assign((0, codegen_1._)`${props}[${key}]`, true);
               } else if (!alwaysValid && !it.allErrors) {
-                gen.if((0, codegen_1.not)(valid), () => gen.break());
+                gen.if((0, codegen_1.not)(valid2), () => gen.break());
               }
             });
           });
@@ -61176,14 +61318,14 @@ var require_not = __commonJS({
           cxt.fail();
           return;
         }
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         cxt.subschema({
           keyword: "not",
           compositeRule: true,
           createErrors: false,
           allErrors: false
-        }, valid);
-        cxt.failResult(valid, () => cxt.reset(), () => cxt.error());
+        }, valid2);
+        cxt.failResult(valid2, () => cxt.reset(), () => cxt.error());
       },
       error: { message: "must NOT be valid" }
     };
@@ -61231,12 +61373,12 @@ var require_oneOf = __commonJS({
         if (it.opts.discriminator && parentSchema.discriminator)
           return;
         const schArr = schema;
-        const valid = gen.let("valid", false);
+        const valid2 = gen.let("valid", false);
         const passing = gen.let("passing", null);
         const schValid = gen.name("_valid");
         cxt.setParams({ passing });
         gen.block(validateOneOf);
-        cxt.result(valid, () => cxt.reset(), () => cxt.error(true));
+        cxt.result(valid2, () => cxt.reset(), () => cxt.error(true));
         function validateOneOf() {
           schArr.forEach((sch, i) => {
             let schCxt;
@@ -61250,10 +61392,10 @@ var require_oneOf = __commonJS({
               }, schValid);
             }
             if (i > 0) {
-              gen.if((0, codegen_1._)`${schValid} && ${valid}`).assign(valid, false).assign(passing, (0, codegen_1._)`[${passing}, ${i}]`).else();
+              gen.if((0, codegen_1._)`${schValid} && ${valid2}`).assign(valid2, false).assign(passing, (0, codegen_1._)`[${passing}, ${i}]`).else();
             }
             gen.if(schValid, () => {
-              gen.assign(valid, true);
+              gen.assign(valid2, true);
               gen.assign(passing, i);
               if (schCxt)
                 cxt.mergeEvaluated(schCxt, codegen_1.Name);
@@ -61279,12 +61421,12 @@ var require_allOf = __commonJS({
         const { gen, schema, it } = cxt;
         if (!Array.isArray(schema))
           throw new Error("ajv implementation error");
-        const valid = gen.name("valid");
+        const valid2 = gen.name("valid");
         schema.forEach((sch, i) => {
           if ((0, util_1.alwaysValidSchema)(it, sch))
             return;
-          const schCxt = cxt.subschema({ keyword: "allOf", schemaProp: i }, valid);
-          cxt.ok(valid);
+          const schCxt = cxt.subschema({ keyword: "allOf", schemaProp: i }, valid2);
+          cxt.ok(valid2);
           cxt.mergeEvaluated(schCxt);
         });
       }
@@ -61318,7 +61460,7 @@ var require_if = __commonJS({
         const hasElse = hasSchema(it, "else");
         if (!hasThen && !hasElse)
           return;
-        const valid = gen.let("valid", true);
+        const valid2 = gen.let("valid", true);
         const schValid = gen.name("_valid");
         validateIf();
         cxt.reset();
@@ -61331,7 +61473,7 @@ var require_if = __commonJS({
         } else {
           gen.if((0, codegen_1.not)(schValid), validateClause("else"));
         }
-        cxt.pass(valid, () => cxt.error(true));
+        cxt.pass(valid2, () => cxt.error(true));
         function validateIf() {
           const schCxt = cxt.subschema({
             keyword: "if",
@@ -61344,8 +61486,8 @@ var require_if = __commonJS({
         function validateClause(keyword, ifClause) {
           return () => {
             const schCxt = cxt.subschema({ keyword }, schValid);
-            gen.assign(valid, schValid);
-            cxt.mergeValidEvaluated(schCxt, valid);
+            gen.assign(valid2, schValid);
+            cxt.mergeValidEvaluated(schCxt, valid2);
             if (ifClause)
               gen.assign(ifClause, (0, codegen_1._)`${keyword}`);
             else
@@ -61620,16 +61762,16 @@ var require_discriminator = __commonJS({
           throw new Error("discriminator: mapping is not supported");
         if (!oneOf)
           throw new Error("discriminator: requires oneOf keyword");
-        const valid = gen.let("valid", false);
+        const valid2 = gen.let("valid", false);
         const tag = gen.const("tag", (0, codegen_1._)`${data}${(0, codegen_1.getProperty)(tagName)}`);
         gen.if((0, codegen_1._)`typeof ${tag} == "string"`, () => validateMapping(), () => cxt.error(false, { discrError: types_1.DiscrError.Tag, tag, tagName }));
-        cxt.ok(valid);
+        cxt.ok(valid2);
         function validateMapping() {
           const mapping = getMapping();
           gen.if(false);
           for (const tagValue in mapping) {
             gen.elseIf((0, codegen_1._)`${tag} === ${tagValue}`);
-            gen.assign(valid, applyTagSchema(mapping[tagValue]));
+            gen.assign(valid2, applyTagSchema(mapping[tagValue]));
           }
           gen.else();
           cxt.error(false, { discrError: types_1.DiscrError.Mapping, tag, tagName });
@@ -61926,8 +62068,8 @@ var require_formats = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.formatNames = exports2.fastFormats = exports2.fullFormats = void 0;
-    function fmtDef(validate, compare) {
-      return { validate, compare };
+    function fmtDef(validate, compare2) {
+      return { validate, compare: compare2 };
     }
     exports2.fullFormats = {
       // date: http://tools.ietf.org/html/rfc3339#section-5.6
@@ -62234,6 +62376,1936 @@ var require_dist2 = __commonJS({
     module2.exports = exports2 = formatsPlugin;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = formatsPlugin;
+  }
+});
+
+// node_modules/semver/internal/constants.js
+var require_constants13 = __commonJS({
+  "node_modules/semver/internal/constants.js"(exports2, module2) {
+    "use strict";
+    var SEMVER_SPEC_VERSION = "2.0.0";
+    var MAX_LENGTH = 256;
+    var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || /* istanbul ignore next */
+    9007199254740991;
+    var MAX_SAFE_COMPONENT_LENGTH = 16;
+    var MAX_SAFE_BUILD_LENGTH = MAX_LENGTH - 6;
+    var RELEASE_TYPES = [
+      "major",
+      "premajor",
+      "minor",
+      "preminor",
+      "patch",
+      "prepatch",
+      "prerelease"
+    ];
+    module2.exports = {
+      MAX_LENGTH,
+      MAX_SAFE_COMPONENT_LENGTH,
+      MAX_SAFE_BUILD_LENGTH,
+      MAX_SAFE_INTEGER,
+      RELEASE_TYPES,
+      SEMVER_SPEC_VERSION,
+      FLAG_INCLUDE_PRERELEASE: 1,
+      FLAG_LOOSE: 2
+    };
+  }
+});
+
+// node_modules/semver/internal/debug.js
+var require_debug = __commonJS({
+  "node_modules/semver/internal/debug.js"(exports2, module2) {
+    "use strict";
+    var debug2 = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
+    };
+    module2.exports = debug2;
+  }
+});
+
+// node_modules/semver/internal/re.js
+var require_re = __commonJS({
+  "node_modules/semver/internal/re.js"(exports2, module2) {
+    "use strict";
+    var {
+      MAX_SAFE_COMPONENT_LENGTH,
+      MAX_SAFE_BUILD_LENGTH,
+      MAX_LENGTH
+    } = require_constants13();
+    var debug2 = require_debug();
+    exports2 = module2.exports = {};
+    var re2 = exports2.re = [];
+    var safeRe = exports2.safeRe = [];
+    var src = exports2.src = [];
+    var safeSrc = exports2.safeSrc = [];
+    var t = exports2.t = {};
+    var R = 0;
+    var LETTERDASHNUMBER = "[a-zA-Z0-9-]";
+    var safeRegexReplacements = [
+      ["\\s", 1],
+      ["\\d", MAX_LENGTH],
+      [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH]
+    ];
+    var makeSafeRegex = (value) => {
+      for (const [token, max] of safeRegexReplacements) {
+        value = value.split(`${token}*`).join(`${token}{0,${max}}`).split(`${token}+`).join(`${token}{1,${max}}`);
+      }
+      return value;
+    };
+    var createToken = (name, value, isGlobal) => {
+      const safe = makeSafeRegex(value);
+      const index = R++;
+      debug2(name, index, value);
+      t[name] = index;
+      src[index] = value;
+      safeSrc[index] = safe;
+      re2[index] = new RegExp(value, isGlobal ? "g" : void 0);
+      safeRe[index] = new RegExp(safe, isGlobal ? "g" : void 0);
+    };
+    createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
+    createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
+    createToken("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+    createToken("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
+    createToken("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
+    createToken("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+    createToken("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+    createToken("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
+    createToken("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+    createToken("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
+    createToken("FULL", `^${src[t.FULLPLAIN]}$`);
+    createToken("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
+    createToken("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
+    createToken("GTLT", "((?:<|>)?=?)");
+    createToken("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+    createToken("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+    createToken("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
+    createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
+    createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+    createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+    createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+    createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
+    createToken("COERCERTL", src[t.COERCE], true);
+    createToken("COERCERTLFULL", src[t.COERCEFULL], true);
+    createToken("LONETILDE", "(?:~>?)");
+    createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+    exports2.tildeTrimReplace = "$1~";
+    createToken("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+    createToken("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("LONECARET", "(?:\\^)");
+    createToken("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
+    exports2.caretTrimReplace = "$1^";
+    createToken("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+    createToken("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+    createToken("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+    createToken("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+    exports2.comparatorTrimReplace = "$1$2$3";
+    createToken("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
+    createToken("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
+    createToken("STAR", "(<|>)?=?\\s*\\*");
+    createToken("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
+    createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
+  }
+});
+
+// node_modules/semver/internal/parse-options.js
+var require_parse_options = __commonJS({
+  "node_modules/semver/internal/parse-options.js"(exports2, module2) {
+    "use strict";
+    var looseOption = Object.freeze({ loose: true });
+    var emptyOpts = Object.freeze({});
+    var parseOptions = (options) => {
+      if (!options) {
+        return emptyOpts;
+      }
+      if (typeof options !== "object") {
+        return looseOption;
+      }
+      return options;
+    };
+    module2.exports = parseOptions;
+  }
+});
+
+// node_modules/semver/internal/identifiers.js
+var require_identifiers = __commonJS({
+  "node_modules/semver/internal/identifiers.js"(exports2, module2) {
+    "use strict";
+    var numeric = /^[0-9]+$/;
+    var compareIdentifiers = (a, b) => {
+      if (typeof a === "number" && typeof b === "number") {
+        return a === b ? 0 : a < b ? -1 : 1;
+      }
+      const anum = numeric.test(a);
+      const bnum = numeric.test(b);
+      if (anum && bnum) {
+        a = +a;
+        b = +b;
+      }
+      return a === b ? 0 : anum && !bnum ? -1 : bnum && !anum ? 1 : a < b ? -1 : 1;
+    };
+    var rcompareIdentifiers = (a, b) => compareIdentifiers(b, a);
+    module2.exports = {
+      compareIdentifiers,
+      rcompareIdentifiers
+    };
+  }
+});
+
+// node_modules/semver/classes/semver.js
+var require_semver = __commonJS({
+  "node_modules/semver/classes/semver.js"(exports2, module2) {
+    "use strict";
+    var debug2 = require_debug();
+    var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants13();
+    var { safeRe: re2, t } = require_re();
+    var parseOptions = require_parse_options();
+    var { compareIdentifiers } = require_identifiers();
+    var SemVer = class _SemVer {
+      constructor(version, options) {
+        options = parseOptions(options);
+        if (version instanceof _SemVer) {
+          if (version.loose === !!options.loose && version.includePrerelease === !!options.includePrerelease) {
+            return version;
+          } else {
+            version = version.version;
+          }
+        } else if (typeof version !== "string") {
+          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`);
+        }
+        if (version.length > MAX_LENGTH) {
+          throw new TypeError(
+            `version is longer than ${MAX_LENGTH} characters`
+          );
+        }
+        debug2("SemVer", version, options);
+        this.options = options;
+        this.loose = !!options.loose;
+        this.includePrerelease = !!options.includePrerelease;
+        const m = version.trim().match(options.loose ? re2[t.LOOSE] : re2[t.FULL]);
+        if (!m) {
+          throw new TypeError(`Invalid Version: ${version}`);
+        }
+        this.raw = version;
+        this.major = +m[1];
+        this.minor = +m[2];
+        this.patch = +m[3];
+        if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
+          throw new TypeError("Invalid major version");
+        }
+        if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
+          throw new TypeError("Invalid minor version");
+        }
+        if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
+          throw new TypeError("Invalid patch version");
+        }
+        if (!m[4]) {
+          this.prerelease = [];
+        } else {
+          this.prerelease = m[4].split(".").map((id) => {
+            if (/^[0-9]+$/.test(id)) {
+              const num = +id;
+              if (num >= 0 && num < MAX_SAFE_INTEGER) {
+                return num;
+              }
+            }
+            return id;
+          });
+        }
+        this.build = m[5] ? m[5].split(".") : [];
+        this.format();
+      }
+      format() {
+        this.version = `${this.major}.${this.minor}.${this.patch}`;
+        if (this.prerelease.length) {
+          this.version += `-${this.prerelease.join(".")}`;
+        }
+        return this.version;
+      }
+      toString() {
+        return this.version;
+      }
+      compare(other) {
+        debug2("SemVer.compare", this.version, this.options, other);
+        if (!(other instanceof _SemVer)) {
+          if (typeof other === "string" && other === this.version) {
+            return 0;
+          }
+          other = new _SemVer(other, this.options);
+        }
+        if (other.version === this.version) {
+          return 0;
+        }
+        return this.compareMain(other) || this.comparePre(other);
+      }
+      compareMain(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        if (this.major < other.major) {
+          return -1;
+        }
+        if (this.major > other.major) {
+          return 1;
+        }
+        if (this.minor < other.minor) {
+          return -1;
+        }
+        if (this.minor > other.minor) {
+          return 1;
+        }
+        if (this.patch < other.patch) {
+          return -1;
+        }
+        if (this.patch > other.patch) {
+          return 1;
+        }
+        return 0;
+      }
+      comparePre(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        if (this.prerelease.length && !other.prerelease.length) {
+          return -1;
+        } else if (!this.prerelease.length && other.prerelease.length) {
+          return 1;
+        } else if (!this.prerelease.length && !other.prerelease.length) {
+          return 0;
+        }
+        let i = 0;
+        do {
+          const a = this.prerelease[i];
+          const b = other.prerelease[i];
+          debug2("prerelease compare", i, a, b);
+          if (a === void 0 && b === void 0) {
+            return 0;
+          } else if (b === void 0) {
+            return 1;
+          } else if (a === void 0) {
+            return -1;
+          } else if (a === b) {
+            continue;
+          } else {
+            return compareIdentifiers(a, b);
+          }
+        } while (++i);
+      }
+      compareBuild(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        let i = 0;
+        do {
+          const a = this.build[i];
+          const b = other.build[i];
+          debug2("build compare", i, a, b);
+          if (a === void 0 && b === void 0) {
+            return 0;
+          } else if (b === void 0) {
+            return 1;
+          } else if (a === void 0) {
+            return -1;
+          } else if (a === b) {
+            continue;
+          } else {
+            return compareIdentifiers(a, b);
+          }
+        } while (++i);
+      }
+      // preminor will bump the version up to the next minor release, and immediately
+      // down to pre-release. premajor and prepatch work the same way.
+      inc(release, identifier, identifierBase) {
+        if (release.startsWith("pre")) {
+          if (!identifier && identifierBase === false) {
+            throw new Error("invalid increment argument: identifier is empty");
+          }
+          if (identifier) {
+            const match = `-${identifier}`.match(this.options.loose ? re2[t.PRERELEASELOOSE] : re2[t.PRERELEASE]);
+            if (!match || match[1] !== identifier) {
+              throw new Error(`invalid identifier: ${identifier}`);
+            }
+          }
+        }
+        switch (release) {
+          case "premajor":
+            this.prerelease.length = 0;
+            this.patch = 0;
+            this.minor = 0;
+            this.major++;
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "preminor":
+            this.prerelease.length = 0;
+            this.patch = 0;
+            this.minor++;
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "prepatch":
+            this.prerelease.length = 0;
+            this.inc("patch", identifier, identifierBase);
+            this.inc("pre", identifier, identifierBase);
+            break;
+          // If the input is a non-prerelease version, this acts the same as
+          // prepatch.
+          case "prerelease":
+            if (this.prerelease.length === 0) {
+              this.inc("patch", identifier, identifierBase);
+            }
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "release":
+            if (this.prerelease.length === 0) {
+              throw new Error(`version ${this.raw} is not a prerelease`);
+            }
+            this.prerelease.length = 0;
+            break;
+          case "major":
+            if (this.minor !== 0 || this.patch !== 0 || this.prerelease.length === 0) {
+              this.major++;
+            }
+            this.minor = 0;
+            this.patch = 0;
+            this.prerelease = [];
+            break;
+          case "minor":
+            if (this.patch !== 0 || this.prerelease.length === 0) {
+              this.minor++;
+            }
+            this.patch = 0;
+            this.prerelease = [];
+            break;
+          case "patch":
+            if (this.prerelease.length === 0) {
+              this.patch++;
+            }
+            this.prerelease = [];
+            break;
+          // This probably shouldn't be used publicly.
+          // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
+          case "pre": {
+            const base = Number(identifierBase) ? 1 : 0;
+            if (this.prerelease.length === 0) {
+              this.prerelease = [base];
+            } else {
+              let i = this.prerelease.length;
+              while (--i >= 0) {
+                if (typeof this.prerelease[i] === "number") {
+                  this.prerelease[i]++;
+                  i = -2;
+                }
+              }
+              if (i === -1) {
+                if (identifier === this.prerelease.join(".") && identifierBase === false) {
+                  throw new Error("invalid increment argument: identifier already exists");
+                }
+                this.prerelease.push(base);
+              }
+            }
+            if (identifier) {
+              let prerelease = [identifier, base];
+              if (identifierBase === false) {
+                prerelease = [identifier];
+              }
+              if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
+                if (isNaN(this.prerelease[1])) {
+                  this.prerelease = prerelease;
+                }
+              } else {
+                this.prerelease = prerelease;
+              }
+            }
+            break;
+          }
+          default:
+            throw new Error(`invalid increment argument: ${release}`);
+        }
+        this.raw = this.format();
+        if (this.build.length) {
+          this.raw += `+${this.build.join(".")}`;
+        }
+        return this;
+      }
+    };
+    module2.exports = SemVer;
+  }
+});
+
+// node_modules/semver/functions/parse.js
+var require_parse3 = __commonJS({
+  "node_modules/semver/functions/parse.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var parse2 = (version, options, throwErrors = false) => {
+      if (version instanceof SemVer) {
+        return version;
+      }
+      try {
+        return new SemVer(version, options);
+      } catch (er) {
+        if (!throwErrors) {
+          return null;
+        }
+        throw er;
+      }
+    };
+    module2.exports = parse2;
+  }
+});
+
+// node_modules/semver/functions/valid.js
+var require_valid = __commonJS({
+  "node_modules/semver/functions/valid.js"(exports2, module2) {
+    "use strict";
+    var parse2 = require_parse3();
+    var valid2 = (version, options) => {
+      const v = parse2(version, options);
+      return v ? v.version : null;
+    };
+    module2.exports = valid2;
+  }
+});
+
+// node_modules/semver/functions/clean.js
+var require_clean = __commonJS({
+  "node_modules/semver/functions/clean.js"(exports2, module2) {
+    "use strict";
+    var parse2 = require_parse3();
+    var clean = (version, options) => {
+      const s = parse2(version.trim().replace(/^[=v]+/, ""), options);
+      return s ? s.version : null;
+    };
+    module2.exports = clean;
+  }
+});
+
+// node_modules/semver/functions/inc.js
+var require_inc = __commonJS({
+  "node_modules/semver/functions/inc.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var inc = (version, release, options, identifier, identifierBase) => {
+      if (typeof options === "string") {
+        identifierBase = identifier;
+        identifier = options;
+        options = void 0;
+      }
+      try {
+        return new SemVer(
+          version instanceof SemVer ? version.version : version,
+          options
+        ).inc(release, identifier, identifierBase).version;
+      } catch (er) {
+        return null;
+      }
+    };
+    module2.exports = inc;
+  }
+});
+
+// node_modules/semver/functions/diff.js
+var require_diff = __commonJS({
+  "node_modules/semver/functions/diff.js"(exports2, module2) {
+    "use strict";
+    var parse2 = require_parse3();
+    var diff = (version1, version2) => {
+      const v1 = parse2(version1, null, true);
+      const v2 = parse2(version2, null, true);
+      const comparison = v1.compare(v2);
+      if (comparison === 0) {
+        return null;
+      }
+      const v1Higher = comparison > 0;
+      const highVersion = v1Higher ? v1 : v2;
+      const lowVersion = v1Higher ? v2 : v1;
+      const highHasPre = !!highVersion.prerelease.length;
+      const lowHasPre = !!lowVersion.prerelease.length;
+      if (lowHasPre && !highHasPre) {
+        if (!lowVersion.patch && !lowVersion.minor) {
+          return "major";
+        }
+        if (lowVersion.compareMain(highVersion) === 0) {
+          if (lowVersion.minor && !lowVersion.patch) {
+            return "minor";
+          }
+          return "patch";
+        }
+      }
+      const prefix = highHasPre ? "pre" : "";
+      if (v1.major !== v2.major) {
+        return prefix + "major";
+      }
+      if (v1.minor !== v2.minor) {
+        return prefix + "minor";
+      }
+      if (v1.patch !== v2.patch) {
+        return prefix + "patch";
+      }
+      return "prerelease";
+    };
+    module2.exports = diff;
+  }
+});
+
+// node_modules/semver/functions/major.js
+var require_major = __commonJS({
+  "node_modules/semver/functions/major.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var major2 = (a, loose) => new SemVer(a, loose).major;
+    module2.exports = major2;
+  }
+});
+
+// node_modules/semver/functions/minor.js
+var require_minor = __commonJS({
+  "node_modules/semver/functions/minor.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var minor = (a, loose) => new SemVer(a, loose).minor;
+    module2.exports = minor;
+  }
+});
+
+// node_modules/semver/functions/patch.js
+var require_patch = __commonJS({
+  "node_modules/semver/functions/patch.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var patch = (a, loose) => new SemVer(a, loose).patch;
+    module2.exports = patch;
+  }
+});
+
+// node_modules/semver/functions/prerelease.js
+var require_prerelease = __commonJS({
+  "node_modules/semver/functions/prerelease.js"(exports2, module2) {
+    "use strict";
+    var parse2 = require_parse3();
+    var prerelease = (version, options) => {
+      const parsed = parse2(version, options);
+      return parsed && parsed.prerelease.length ? parsed.prerelease : null;
+    };
+    module2.exports = prerelease;
+  }
+});
+
+// node_modules/semver/functions/compare.js
+var require_compare = __commonJS({
+  "node_modules/semver/functions/compare.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var compare2 = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
+    module2.exports = compare2;
+  }
+});
+
+// node_modules/semver/functions/rcompare.js
+var require_rcompare = __commonJS({
+  "node_modules/semver/functions/rcompare.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var rcompare = (a, b, loose) => compare2(b, a, loose);
+    module2.exports = rcompare;
+  }
+});
+
+// node_modules/semver/functions/compare-loose.js
+var require_compare_loose = __commonJS({
+  "node_modules/semver/functions/compare-loose.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var compareLoose = (a, b) => compare2(a, b, true);
+    module2.exports = compareLoose;
+  }
+});
+
+// node_modules/semver/functions/compare-build.js
+var require_compare_build = __commonJS({
+  "node_modules/semver/functions/compare-build.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var compareBuild = (a, b, loose) => {
+      const versionA = new SemVer(a, loose);
+      const versionB = new SemVer(b, loose);
+      return versionA.compare(versionB) || versionA.compareBuild(versionB);
+    };
+    module2.exports = compareBuild;
+  }
+});
+
+// node_modules/semver/functions/sort.js
+var require_sort = __commonJS({
+  "node_modules/semver/functions/sort.js"(exports2, module2) {
+    "use strict";
+    var compareBuild = require_compare_build();
+    var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
+    module2.exports = sort;
+  }
+});
+
+// node_modules/semver/functions/rsort.js
+var require_rsort = __commonJS({
+  "node_modules/semver/functions/rsort.js"(exports2, module2) {
+    "use strict";
+    var compareBuild = require_compare_build();
+    var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
+    module2.exports = rsort;
+  }
+});
+
+// node_modules/semver/functions/gt.js
+var require_gt = __commonJS({
+  "node_modules/semver/functions/gt.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var gt = (a, b, loose) => compare2(a, b, loose) > 0;
+    module2.exports = gt;
+  }
+});
+
+// node_modules/semver/functions/lt.js
+var require_lt = __commonJS({
+  "node_modules/semver/functions/lt.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var lt = (a, b, loose) => compare2(a, b, loose) < 0;
+    module2.exports = lt;
+  }
+});
+
+// node_modules/semver/functions/eq.js
+var require_eq = __commonJS({
+  "node_modules/semver/functions/eq.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var eq = (a, b, loose) => compare2(a, b, loose) === 0;
+    module2.exports = eq;
+  }
+});
+
+// node_modules/semver/functions/neq.js
+var require_neq = __commonJS({
+  "node_modules/semver/functions/neq.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var neq = (a, b, loose) => compare2(a, b, loose) !== 0;
+    module2.exports = neq;
+  }
+});
+
+// node_modules/semver/functions/gte.js
+var require_gte = __commonJS({
+  "node_modules/semver/functions/gte.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var gte = (a, b, loose) => compare2(a, b, loose) >= 0;
+    module2.exports = gte;
+  }
+});
+
+// node_modules/semver/functions/lte.js
+var require_lte = __commonJS({
+  "node_modules/semver/functions/lte.js"(exports2, module2) {
+    "use strict";
+    var compare2 = require_compare();
+    var lte = (a, b, loose) => compare2(a, b, loose) <= 0;
+    module2.exports = lte;
+  }
+});
+
+// node_modules/semver/functions/cmp.js
+var require_cmp = __commonJS({
+  "node_modules/semver/functions/cmp.js"(exports2, module2) {
+    "use strict";
+    var eq = require_eq();
+    var neq = require_neq();
+    var gt = require_gt();
+    var gte = require_gte();
+    var lt = require_lt();
+    var lte = require_lte();
+    var cmp = (a, op, b, loose) => {
+      switch (op) {
+        case "===":
+          if (typeof a === "object") {
+            a = a.version;
+          }
+          if (typeof b === "object") {
+            b = b.version;
+          }
+          return a === b;
+        case "!==":
+          if (typeof a === "object") {
+            a = a.version;
+          }
+          if (typeof b === "object") {
+            b = b.version;
+          }
+          return a !== b;
+        case "":
+        case "=":
+        case "==":
+          return eq(a, b, loose);
+        case "!=":
+          return neq(a, b, loose);
+        case ">":
+          return gt(a, b, loose);
+        case ">=":
+          return gte(a, b, loose);
+        case "<":
+          return lt(a, b, loose);
+        case "<=":
+          return lte(a, b, loose);
+        default:
+          throw new TypeError(`Invalid operator: ${op}`);
+      }
+    };
+    module2.exports = cmp;
+  }
+});
+
+// node_modules/semver/functions/coerce.js
+var require_coerce = __commonJS({
+  "node_modules/semver/functions/coerce.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var parse2 = require_parse3();
+    var { safeRe: re2, t } = require_re();
+    var coerce2 = (version, options) => {
+      if (version instanceof SemVer) {
+        return version;
+      }
+      if (typeof version === "number") {
+        version = String(version);
+      }
+      if (typeof version !== "string") {
+        return null;
+      }
+      options = options || {};
+      let match = null;
+      if (!options.rtl) {
+        match = version.match(options.includePrerelease ? re2[t.COERCEFULL] : re2[t.COERCE]);
+      } else {
+        const coerceRtlRegex = options.includePrerelease ? re2[t.COERCERTLFULL] : re2[t.COERCERTL];
+        let next;
+        while ((next = coerceRtlRegex.exec(version)) && (!match || match.index + match[0].length !== version.length)) {
+          if (!match || next.index + next[0].length !== match.index + match[0].length) {
+            match = next;
+          }
+          coerceRtlRegex.lastIndex = next.index + next[1].length + next[2].length;
+        }
+        coerceRtlRegex.lastIndex = -1;
+      }
+      if (match === null) {
+        return null;
+      }
+      const major2 = match[2];
+      const minor = match[3] || "0";
+      const patch = match[4] || "0";
+      const prerelease = options.includePrerelease && match[5] ? `-${match[5]}` : "";
+      const build = options.includePrerelease && match[6] ? `+${match[6]}` : "";
+      return parse2(`${major2}.${minor}.${patch}${prerelease}${build}`, options);
+    };
+    module2.exports = coerce2;
+  }
+});
+
+// node_modules/semver/internal/lrucache.js
+var require_lrucache = __commonJS({
+  "node_modules/semver/internal/lrucache.js"(exports2, module2) {
+    "use strict";
+    var LRUCache = class {
+      constructor() {
+        this.max = 1e3;
+        this.map = /* @__PURE__ */ new Map();
+      }
+      get(key) {
+        const value = this.map.get(key);
+        if (value === void 0) {
+          return void 0;
+        } else {
+          this.map.delete(key);
+          this.map.set(key, value);
+          return value;
+        }
+      }
+      delete(key) {
+        return this.map.delete(key);
+      }
+      set(key, value) {
+        const deleted = this.delete(key);
+        if (!deleted && value !== void 0) {
+          if (this.map.size >= this.max) {
+            const firstKey = this.map.keys().next().value;
+            this.delete(firstKey);
+          }
+          this.map.set(key, value);
+        }
+        return this;
+      }
+    };
+    module2.exports = LRUCache;
+  }
+});
+
+// node_modules/semver/classes/range.js
+var require_range = __commonJS({
+  "node_modules/semver/classes/range.js"(exports2, module2) {
+    "use strict";
+    var SPACE_CHARACTERS = /\s+/g;
+    var Range = class _Range {
+      constructor(range2, options) {
+        options = parseOptions(options);
+        if (range2 instanceof _Range) {
+          if (range2.loose === !!options.loose && range2.includePrerelease === !!options.includePrerelease) {
+            return range2;
+          } else {
+            return new _Range(range2.raw, options);
+          }
+        }
+        if (range2 instanceof Comparator) {
+          this.raw = range2.value;
+          this.set = [[range2]];
+          this.formatted = void 0;
+          return this;
+        }
+        this.options = options;
+        this.loose = !!options.loose;
+        this.includePrerelease = !!options.includePrerelease;
+        this.raw = range2.trim().replace(SPACE_CHARACTERS, " ");
+        this.set = this.raw.split("||").map((r) => this.parseRange(r.trim())).filter((c) => c.length);
+        if (!this.set.length) {
+          throw new TypeError(`Invalid SemVer Range: ${this.raw}`);
+        }
+        if (this.set.length > 1) {
+          const first = this.set[0];
+          this.set = this.set.filter((c) => !isNullSet(c[0]));
+          if (this.set.length === 0) {
+            this.set = [first];
+          } else if (this.set.length > 1) {
+            for (const c of this.set) {
+              if (c.length === 1 && isAny(c[0])) {
+                this.set = [c];
+                break;
+              }
+            }
+          }
+        }
+        this.formatted = void 0;
+      }
+      get range() {
+        if (this.formatted === void 0) {
+          this.formatted = "";
+          for (let i = 0; i < this.set.length; i++) {
+            if (i > 0) {
+              this.formatted += "||";
+            }
+            const comps = this.set[i];
+            for (let k = 0; k < comps.length; k++) {
+              if (k > 0) {
+                this.formatted += " ";
+              }
+              this.formatted += comps[k].toString().trim();
+            }
+          }
+        }
+        return this.formatted;
+      }
+      format() {
+        return this.range;
+      }
+      toString() {
+        return this.range;
+      }
+      parseRange(range2) {
+        const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
+        const memoKey = memoOpts + ":" + range2;
+        const cached2 = cache.get(memoKey);
+        if (cached2) {
+          return cached2;
+        }
+        const loose = this.options.loose;
+        const hr = loose ? re2[t.HYPHENRANGELOOSE] : re2[t.HYPHENRANGE];
+        range2 = range2.replace(hr, hyphenReplace(this.options.includePrerelease));
+        debug2("hyphen replace", range2);
+        range2 = range2.replace(re2[t.COMPARATORTRIM], comparatorTrimReplace);
+        debug2("comparator trim", range2);
+        range2 = range2.replace(re2[t.TILDETRIM], tildeTrimReplace);
+        debug2("tilde trim", range2);
+        range2 = range2.replace(re2[t.CARETTRIM], caretTrimReplace);
+        debug2("caret trim", range2);
+        let rangeList = range2.split(" ").map((comp) => parseComparator(comp, this.options)).join(" ").split(/\s+/).map((comp) => replaceGTE0(comp, this.options));
+        if (loose) {
+          rangeList = rangeList.filter((comp) => {
+            debug2("loose invalid filter", comp, this.options);
+            return !!comp.match(re2[t.COMPARATORLOOSE]);
+          });
+        }
+        debug2("range list", rangeList);
+        const rangeMap = /* @__PURE__ */ new Map();
+        const comparators = rangeList.map((comp) => new Comparator(comp, this.options));
+        for (const comp of comparators) {
+          if (isNullSet(comp)) {
+            return [comp];
+          }
+          rangeMap.set(comp.value, comp);
+        }
+        if (rangeMap.size > 1 && rangeMap.has("")) {
+          rangeMap.delete("");
+        }
+        const result = [...rangeMap.values()];
+        cache.set(memoKey, result);
+        return result;
+      }
+      intersects(range2, options) {
+        if (!(range2 instanceof _Range)) {
+          throw new TypeError("a Range is required");
+        }
+        return this.set.some((thisComparators) => {
+          return isSatisfiable(thisComparators, options) && range2.set.some((rangeComparators) => {
+            return isSatisfiable(rangeComparators, options) && thisComparators.every((thisComparator) => {
+              return rangeComparators.every((rangeComparator) => {
+                return thisComparator.intersects(rangeComparator, options);
+              });
+            });
+          });
+        });
+      }
+      // if ANY of the sets match ALL of its comparators, then pass
+      test(version) {
+        if (!version) {
+          return false;
+        }
+        if (typeof version === "string") {
+          try {
+            version = new SemVer(version, this.options);
+          } catch (er) {
+            return false;
+          }
+        }
+        for (let i = 0; i < this.set.length; i++) {
+          if (testSet(this.set[i], version, this.options)) {
+            return true;
+          }
+        }
+        return false;
+      }
+    };
+    module2.exports = Range;
+    var LRU = require_lrucache();
+    var cache = new LRU();
+    var parseOptions = require_parse_options();
+    var Comparator = require_comparator();
+    var debug2 = require_debug();
+    var SemVer = require_semver();
+    var {
+      safeRe: re2,
+      t,
+      comparatorTrimReplace,
+      tildeTrimReplace,
+      caretTrimReplace
+    } = require_re();
+    var { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants13();
+    var isNullSet = (c) => c.value === "<0.0.0-0";
+    var isAny = (c) => c.value === "";
+    var isSatisfiable = (comparators, options) => {
+      let result = true;
+      const remainingComparators = comparators.slice();
+      let testComparator = remainingComparators.pop();
+      while (result && remainingComparators.length) {
+        result = remainingComparators.every((otherComparator) => {
+          return testComparator.intersects(otherComparator, options);
+        });
+        testComparator = remainingComparators.pop();
+      }
+      return result;
+    };
+    var parseComparator = (comp, options) => {
+      comp = comp.replace(re2[t.BUILD], "");
+      debug2("comp", comp, options);
+      comp = replaceCarets(comp, options);
+      debug2("caret", comp);
+      comp = replaceTildes(comp, options);
+      debug2("tildes", comp);
+      comp = replaceXRanges(comp, options);
+      debug2("xrange", comp);
+      comp = replaceStars(comp, options);
+      debug2("stars", comp);
+      return comp;
+    };
+    var isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
+    var replaceTildes = (comp, options) => {
+      return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
+    };
+    var replaceTilde = (comp, options) => {
+      const r = options.loose ? re2[t.TILDELOOSE] : re2[t.TILDE];
+      return comp.replace(r, (_, M, m, p, pr) => {
+        debug2("tilde", comp, _, M, m, p, pr);
+        let ret;
+        if (isX(M)) {
+          ret = "";
+        } else if (isX(m)) {
+          ret = `>=${M}.0.0 <${+M + 1}.0.0-0`;
+        } else if (isX(p)) {
+          ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`;
+        } else if (pr) {
+          debug2("replaceTilde pr", pr);
+          ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+        } else {
+          ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
+        }
+        debug2("tilde return", ret);
+        return ret;
+      });
+    };
+    var replaceCarets = (comp, options) => {
+      return comp.trim().split(/\s+/).map((c) => replaceCaret(c, options)).join(" ");
+    };
+    var replaceCaret = (comp, options) => {
+      debug2("caret", comp, options);
+      const r = options.loose ? re2[t.CARETLOOSE] : re2[t.CARET];
+      const z = options.includePrerelease ? "-0" : "";
+      return comp.replace(r, (_, M, m, p, pr) => {
+        debug2("caret", comp, _, M, m, p, pr);
+        let ret;
+        if (isX(M)) {
+          ret = "";
+        } else if (isX(m)) {
+          ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+        } else if (isX(p)) {
+          if (M === "0") {
+            ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+          } else {
+            ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`;
+          }
+        } else if (pr) {
+          debug2("replaceCaret pr", pr);
+          if (M === "0") {
+            if (m === "0") {
+              ret = `>=${M}.${m}.${p}-${pr} <${M}.${m}.${+p + 1}-0`;
+            } else {
+              ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+            }
+          } else {
+            ret = `>=${M}.${m}.${p}-${pr} <${+M + 1}.0.0-0`;
+          }
+        } else {
+          debug2("no pr");
+          if (M === "0") {
+            if (m === "0") {
+              ret = `>=${M}.${m}.${p}${z} <${M}.${m}.${+p + 1}-0`;
+            } else {
+              ret = `>=${M}.${m}.${p}${z} <${M}.${+m + 1}.0-0`;
+            }
+          } else {
+            ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
+          }
+        }
+        debug2("caret return", ret);
+        return ret;
+      });
+    };
+    var replaceXRanges = (comp, options) => {
+      debug2("replaceXRanges", comp, options);
+      return comp.split(/\s+/).map((c) => replaceXRange(c, options)).join(" ");
+    };
+    var replaceXRange = (comp, options) => {
+      comp = comp.trim();
+      const r = options.loose ? re2[t.XRANGELOOSE] : re2[t.XRANGE];
+      return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
+        debug2("xRange", comp, ret, gtlt, M, m, p, pr);
+        const xM = isX(M);
+        const xm = xM || isX(m);
+        const xp = xm || isX(p);
+        const anyX = xp;
+        if (gtlt === "=" && anyX) {
+          gtlt = "";
+        }
+        pr = options.includePrerelease ? "-0" : "";
+        if (xM) {
+          if (gtlt === ">" || gtlt === "<") {
+            ret = "<0.0.0-0";
+          } else {
+            ret = "*";
+          }
+        } else if (gtlt && anyX) {
+          if (xm) {
+            m = 0;
+          }
+          p = 0;
+          if (gtlt === ">") {
+            gtlt = ">=";
+            if (xm) {
+              M = +M + 1;
+              m = 0;
+              p = 0;
+            } else {
+              m = +m + 1;
+              p = 0;
+            }
+          } else if (gtlt === "<=") {
+            gtlt = "<";
+            if (xm) {
+              M = +M + 1;
+            } else {
+              m = +m + 1;
+            }
+          }
+          if (gtlt === "<") {
+            pr = "-0";
+          }
+          ret = `${gtlt + M}.${m}.${p}${pr}`;
+        } else if (xm) {
+          ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`;
+        } else if (xp) {
+          ret = `>=${M}.${m}.0${pr} <${M}.${+m + 1}.0-0`;
+        }
+        debug2("xRange return", ret);
+        return ret;
+      });
+    };
+    var replaceStars = (comp, options) => {
+      debug2("replaceStars", comp, options);
+      return comp.trim().replace(re2[t.STAR], "");
+    };
+    var replaceGTE0 = (comp, options) => {
+      debug2("replaceGTE0", comp, options);
+      return comp.trim().replace(re2[options.includePrerelease ? t.GTE0PRE : t.GTE0], "");
+    };
+    var hyphenReplace = (incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
+      if (isX(fM)) {
+        from = "";
+      } else if (isX(fm)) {
+        from = `>=${fM}.0.0${incPr ? "-0" : ""}`;
+      } else if (isX(fp)) {
+        from = `>=${fM}.${fm}.0${incPr ? "-0" : ""}`;
+      } else if (fpr) {
+        from = `>=${from}`;
+      } else {
+        from = `>=${from}${incPr ? "-0" : ""}`;
+      }
+      if (isX(tM)) {
+        to = "";
+      } else if (isX(tm)) {
+        to = `<${+tM + 1}.0.0-0`;
+      } else if (isX(tp)) {
+        to = `<${tM}.${+tm + 1}.0-0`;
+      } else if (tpr) {
+        to = `<=${tM}.${tm}.${tp}-${tpr}`;
+      } else if (incPr) {
+        to = `<${tM}.${tm}.${+tp + 1}-0`;
+      } else {
+        to = `<=${to}`;
+      }
+      return `${from} ${to}`.trim();
+    };
+    var testSet = (set, version, options) => {
+      for (let i = 0; i < set.length; i++) {
+        if (!set[i].test(version)) {
+          return false;
+        }
+      }
+      if (version.prerelease.length && !options.includePrerelease) {
+        for (let i = 0; i < set.length; i++) {
+          debug2(set[i].semver);
+          if (set[i].semver === Comparator.ANY) {
+            continue;
+          }
+          if (set[i].semver.prerelease.length > 0) {
+            const allowed = set[i].semver;
+            if (allowed.major === version.major && allowed.minor === version.minor && allowed.patch === version.patch) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+      return true;
+    };
+  }
+});
+
+// node_modules/semver/classes/comparator.js
+var require_comparator = __commonJS({
+  "node_modules/semver/classes/comparator.js"(exports2, module2) {
+    "use strict";
+    var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
+    var Comparator = class _Comparator {
+      static get ANY() {
+        return ANY;
+      }
+      constructor(comp, options) {
+        options = parseOptions(options);
+        if (comp instanceof _Comparator) {
+          if (comp.loose === !!options.loose) {
+            return comp;
+          } else {
+            comp = comp.value;
+          }
+        }
+        comp = comp.trim().split(/\s+/).join(" ");
+        debug2("comparator", comp, options);
+        this.options = options;
+        this.loose = !!options.loose;
+        this.parse(comp);
+        if (this.semver === ANY) {
+          this.value = "";
+        } else {
+          this.value = this.operator + this.semver.version;
+        }
+        debug2("comp", this);
+      }
+      parse(comp) {
+        const r = this.options.loose ? re2[t.COMPARATORLOOSE] : re2[t.COMPARATOR];
+        const m = comp.match(r);
+        if (!m) {
+          throw new TypeError(`Invalid comparator: ${comp}`);
+        }
+        this.operator = m[1] !== void 0 ? m[1] : "";
+        if (this.operator === "=") {
+          this.operator = "";
+        }
+        if (!m[2]) {
+          this.semver = ANY;
+        } else {
+          this.semver = new SemVer(m[2], this.options.loose);
+        }
+      }
+      toString() {
+        return this.value;
+      }
+      test(version) {
+        debug2("Comparator.test", version, this.options.loose);
+        if (this.semver === ANY || version === ANY) {
+          return true;
+        }
+        if (typeof version === "string") {
+          try {
+            version = new SemVer(version, this.options);
+          } catch (er) {
+            return false;
+          }
+        }
+        return cmp(version, this.operator, this.semver, this.options);
+      }
+      intersects(comp, options) {
+        if (!(comp instanceof _Comparator)) {
+          throw new TypeError("a Comparator is required");
+        }
+        if (this.operator === "") {
+          if (this.value === "") {
+            return true;
+          }
+          return new Range(comp.value, options).test(this.value);
+        } else if (comp.operator === "") {
+          if (comp.value === "") {
+            return true;
+          }
+          return new Range(this.value, options).test(comp.semver);
+        }
+        options = parseOptions(options);
+        if (options.includePrerelease && (this.value === "<0.0.0-0" || comp.value === "<0.0.0-0")) {
+          return false;
+        }
+        if (!options.includePrerelease && (this.value.startsWith("<0.0.0") || comp.value.startsWith("<0.0.0"))) {
+          return false;
+        }
+        if (this.operator.startsWith(">") && comp.operator.startsWith(">")) {
+          return true;
+        }
+        if (this.operator.startsWith("<") && comp.operator.startsWith("<")) {
+          return true;
+        }
+        if (this.semver.version === comp.semver.version && this.operator.includes("=") && comp.operator.includes("=")) {
+          return true;
+        }
+        if (cmp(this.semver, "<", comp.semver, options) && this.operator.startsWith(">") && comp.operator.startsWith("<")) {
+          return true;
+        }
+        if (cmp(this.semver, ">", comp.semver, options) && this.operator.startsWith("<") && comp.operator.startsWith(">")) {
+          return true;
+        }
+        return false;
+      }
+    };
+    module2.exports = Comparator;
+    var parseOptions = require_parse_options();
+    var { safeRe: re2, t } = require_re();
+    var cmp = require_cmp();
+    var debug2 = require_debug();
+    var SemVer = require_semver();
+    var Range = require_range();
+  }
+});
+
+// node_modules/semver/functions/satisfies.js
+var require_satisfies = __commonJS({
+  "node_modules/semver/functions/satisfies.js"(exports2, module2) {
+    "use strict";
+    var Range = require_range();
+    var satisfies = (version, range2, options) => {
+      try {
+        range2 = new Range(range2, options);
+      } catch (er) {
+        return false;
+      }
+      return range2.test(version);
+    };
+    module2.exports = satisfies;
+  }
+});
+
+// node_modules/semver/ranges/to-comparators.js
+var require_to_comparators = __commonJS({
+  "node_modules/semver/ranges/to-comparators.js"(exports2, module2) {
+    "use strict";
+    var Range = require_range();
+    var toComparators = (range2, options) => new Range(range2, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
+    module2.exports = toComparators;
+  }
+});
+
+// node_modules/semver/ranges/max-satisfying.js
+var require_max_satisfying = __commonJS({
+  "node_modules/semver/ranges/max-satisfying.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var Range = require_range();
+    var maxSatisfying = (versions, range2, options) => {
+      let max = null;
+      let maxSV = null;
+      let rangeObj = null;
+      try {
+        rangeObj = new Range(range2, options);
+      } catch (er) {
+        return null;
+      }
+      versions.forEach((v) => {
+        if (rangeObj.test(v)) {
+          if (!max || maxSV.compare(v) === -1) {
+            max = v;
+            maxSV = new SemVer(max, options);
+          }
+        }
+      });
+      return max;
+    };
+    module2.exports = maxSatisfying;
+  }
+});
+
+// node_modules/semver/ranges/min-satisfying.js
+var require_min_satisfying = __commonJS({
+  "node_modules/semver/ranges/min-satisfying.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var Range = require_range();
+    var minSatisfying = (versions, range2, options) => {
+      let min = null;
+      let minSV = null;
+      let rangeObj = null;
+      try {
+        rangeObj = new Range(range2, options);
+      } catch (er) {
+        return null;
+      }
+      versions.forEach((v) => {
+        if (rangeObj.test(v)) {
+          if (!min || minSV.compare(v) === 1) {
+            min = v;
+            minSV = new SemVer(min, options);
+          }
+        }
+      });
+      return min;
+    };
+    module2.exports = minSatisfying;
+  }
+});
+
+// node_modules/semver/ranges/min-version.js
+var require_min_version = __commonJS({
+  "node_modules/semver/ranges/min-version.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var Range = require_range();
+    var gt = require_gt();
+    var minVersion = (range2, loose) => {
+      range2 = new Range(range2, loose);
+      let minver = new SemVer("0.0.0");
+      if (range2.test(minver)) {
+        return minver;
+      }
+      minver = new SemVer("0.0.0-0");
+      if (range2.test(minver)) {
+        return minver;
+      }
+      minver = null;
+      for (let i = 0; i < range2.set.length; ++i) {
+        const comparators = range2.set[i];
+        let setMin = null;
+        comparators.forEach((comparator) => {
+          const compver = new SemVer(comparator.semver.version);
+          switch (comparator.operator) {
+            case ">":
+              if (compver.prerelease.length === 0) {
+                compver.patch++;
+              } else {
+                compver.prerelease.push(0);
+              }
+              compver.raw = compver.format();
+            /* fallthrough */
+            case "":
+            case ">=":
+              if (!setMin || gt(compver, setMin)) {
+                setMin = compver;
+              }
+              break;
+            case "<":
+            case "<=":
+              break;
+            /* istanbul ignore next */
+            default:
+              throw new Error(`Unexpected operation: ${comparator.operator}`);
+          }
+        });
+        if (setMin && (!minver || gt(minver, setMin))) {
+          minver = setMin;
+        }
+      }
+      if (minver && range2.test(minver)) {
+        return minver;
+      }
+      return null;
+    };
+    module2.exports = minVersion;
+  }
+});
+
+// node_modules/semver/ranges/valid.js
+var require_valid2 = __commonJS({
+  "node_modules/semver/ranges/valid.js"(exports2, module2) {
+    "use strict";
+    var Range = require_range();
+    var validRange = (range2, options) => {
+      try {
+        return new Range(range2, options).range || "*";
+      } catch (er) {
+        return null;
+      }
+    };
+    module2.exports = validRange;
+  }
+});
+
+// node_modules/semver/ranges/outside.js
+var require_outside = __commonJS({
+  "node_modules/semver/ranges/outside.js"(exports2, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var Comparator = require_comparator();
+    var { ANY } = Comparator;
+    var Range = require_range();
+    var satisfies = require_satisfies();
+    var gt = require_gt();
+    var lt = require_lt();
+    var lte = require_lte();
+    var gte = require_gte();
+    var outside = (version, range2, hilo, options) => {
+      version = new SemVer(version, options);
+      range2 = new Range(range2, options);
+      let gtfn, ltefn, ltfn, comp, ecomp;
+      switch (hilo) {
+        case ">":
+          gtfn = gt;
+          ltefn = lte;
+          ltfn = lt;
+          comp = ">";
+          ecomp = ">=";
+          break;
+        case "<":
+          gtfn = lt;
+          ltefn = gte;
+          ltfn = gt;
+          comp = "<";
+          ecomp = "<=";
+          break;
+        default:
+          throw new TypeError('Must provide a hilo val of "<" or ">"');
+      }
+      if (satisfies(version, range2, options)) {
+        return false;
+      }
+      for (let i = 0; i < range2.set.length; ++i) {
+        const comparators = range2.set[i];
+        let high = null;
+        let low = null;
+        comparators.forEach((comparator) => {
+          if (comparator.semver === ANY) {
+            comparator = new Comparator(">=0.0.0");
+          }
+          high = high || comparator;
+          low = low || comparator;
+          if (gtfn(comparator.semver, high.semver, options)) {
+            high = comparator;
+          } else if (ltfn(comparator.semver, low.semver, options)) {
+            low = comparator;
+          }
+        });
+        if (high.operator === comp || high.operator === ecomp) {
+          return false;
+        }
+        if ((!low.operator || low.operator === comp) && ltefn(version, low.semver)) {
+          return false;
+        } else if (low.operator === ecomp && ltfn(version, low.semver)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    module2.exports = outside;
+  }
+});
+
+// node_modules/semver/ranges/gtr.js
+var require_gtr = __commonJS({
+  "node_modules/semver/ranges/gtr.js"(exports2, module2) {
+    "use strict";
+    var outside = require_outside();
+    var gtr = (version, range2, options) => outside(version, range2, ">", options);
+    module2.exports = gtr;
+  }
+});
+
+// node_modules/semver/ranges/ltr.js
+var require_ltr = __commonJS({
+  "node_modules/semver/ranges/ltr.js"(exports2, module2) {
+    "use strict";
+    var outside = require_outside();
+    var ltr = (version, range2, options) => outside(version, range2, "<", options);
+    module2.exports = ltr;
+  }
+});
+
+// node_modules/semver/ranges/intersects.js
+var require_intersects = __commonJS({
+  "node_modules/semver/ranges/intersects.js"(exports2, module2) {
+    "use strict";
+    var Range = require_range();
+    var intersects = (r1, r2, options) => {
+      r1 = new Range(r1, options);
+      r2 = new Range(r2, options);
+      return r1.intersects(r2, options);
+    };
+    module2.exports = intersects;
+  }
+});
+
+// node_modules/semver/ranges/simplify.js
+var require_simplify = __commonJS({
+  "node_modules/semver/ranges/simplify.js"(exports2, module2) {
+    "use strict";
+    var satisfies = require_satisfies();
+    var compare2 = require_compare();
+    module2.exports = (versions, range2, options) => {
+      const set = [];
+      let first = null;
+      let prev = null;
+      const v = versions.sort((a, b) => compare2(a, b, options));
+      for (const version of v) {
+        const included = satisfies(version, range2, options);
+        if (included) {
+          prev = version;
+          if (!first) {
+            first = version;
+          }
+        } else {
+          if (prev) {
+            set.push([first, prev]);
+          }
+          prev = null;
+          first = null;
+        }
+      }
+      if (first) {
+        set.push([first, null]);
+      }
+      const ranges = [];
+      for (const [min, max] of set) {
+        if (min === max) {
+          ranges.push(min);
+        } else if (!max && min === v[0]) {
+          ranges.push("*");
+        } else if (!max) {
+          ranges.push(`>=${min}`);
+        } else if (min === v[0]) {
+          ranges.push(`<=${max}`);
+        } else {
+          ranges.push(`${min} - ${max}`);
+        }
+      }
+      const simplified = ranges.join(" || ");
+      const original = typeof range2.raw === "string" ? range2.raw : String(range2);
+      return simplified.length < original.length ? simplified : range2;
+    };
+  }
+});
+
+// node_modules/semver/ranges/subset.js
+var require_subset = __commonJS({
+  "node_modules/semver/ranges/subset.js"(exports2, module2) {
+    "use strict";
+    var Range = require_range();
+    var Comparator = require_comparator();
+    var { ANY } = Comparator;
+    var satisfies = require_satisfies();
+    var compare2 = require_compare();
+    var subset = (sub, dom, options = {}) => {
+      if (sub === dom) {
+        return true;
+      }
+      sub = new Range(sub, options);
+      dom = new Range(dom, options);
+      let sawNonNull = false;
+      OUTER: for (const simpleSub of sub.set) {
+        for (const simpleDom of dom.set) {
+          const isSub = simpleSubset(simpleSub, simpleDom, options);
+          sawNonNull = sawNonNull || isSub !== null;
+          if (isSub) {
+            continue OUTER;
+          }
+        }
+        if (sawNonNull) {
+          return false;
+        }
+      }
+      return true;
+    };
+    var minimumVersionWithPreRelease = [new Comparator(">=0.0.0-0")];
+    var minimumVersion = [new Comparator(">=0.0.0")];
+    var simpleSubset = (sub, dom, options) => {
+      if (sub === dom) {
+        return true;
+      }
+      if (sub.length === 1 && sub[0].semver === ANY) {
+        if (dom.length === 1 && dom[0].semver === ANY) {
+          return true;
+        } else if (options.includePrerelease) {
+          sub = minimumVersionWithPreRelease;
+        } else {
+          sub = minimumVersion;
+        }
+      }
+      if (dom.length === 1 && dom[0].semver === ANY) {
+        if (options.includePrerelease) {
+          return true;
+        } else {
+          dom = minimumVersion;
+        }
+      }
+      const eqSet = /* @__PURE__ */ new Set();
+      let gt, lt;
+      for (const c of sub) {
+        if (c.operator === ">" || c.operator === ">=") {
+          gt = higherGT(gt, c, options);
+        } else if (c.operator === "<" || c.operator === "<=") {
+          lt = lowerLT(lt, c, options);
+        } else {
+          eqSet.add(c.semver);
+        }
+      }
+      if (eqSet.size > 1) {
+        return null;
+      }
+      let gtltComp;
+      if (gt && lt) {
+        gtltComp = compare2(gt.semver, lt.semver, options);
+        if (gtltComp > 0) {
+          return null;
+        } else if (gtltComp === 0 && (gt.operator !== ">=" || lt.operator !== "<=")) {
+          return null;
+        }
+      }
+      for (const eq of eqSet) {
+        if (gt && !satisfies(eq, String(gt), options)) {
+          return null;
+        }
+        if (lt && !satisfies(eq, String(lt), options)) {
+          return null;
+        }
+        for (const c of dom) {
+          if (!satisfies(eq, String(c), options)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      let higher, lower;
+      let hasDomLT, hasDomGT;
+      let needDomLTPre = lt && !options.includePrerelease && lt.semver.prerelease.length ? lt.semver : false;
+      let needDomGTPre = gt && !options.includePrerelease && gt.semver.prerelease.length ? gt.semver : false;
+      if (needDomLTPre && needDomLTPre.prerelease.length === 1 && lt.operator === "<" && needDomLTPre.prerelease[0] === 0) {
+        needDomLTPre = false;
+      }
+      for (const c of dom) {
+        hasDomGT = hasDomGT || c.operator === ">" || c.operator === ">=";
+        hasDomLT = hasDomLT || c.operator === "<" || c.operator === "<=";
+        if (gt) {
+          if (needDomGTPre) {
+            if (c.semver.prerelease && c.semver.prerelease.length && c.semver.major === needDomGTPre.major && c.semver.minor === needDomGTPre.minor && c.semver.patch === needDomGTPre.patch) {
+              needDomGTPre = false;
+            }
+          }
+          if (c.operator === ">" || c.operator === ">=") {
+            higher = higherGT(gt, c, options);
+            if (higher === c && higher !== gt) {
+              return false;
+            }
+          } else if (gt.operator === ">=" && !satisfies(gt.semver, String(c), options)) {
+            return false;
+          }
+        }
+        if (lt) {
+          if (needDomLTPre) {
+            if (c.semver.prerelease && c.semver.prerelease.length && c.semver.major === needDomLTPre.major && c.semver.minor === needDomLTPre.minor && c.semver.patch === needDomLTPre.patch) {
+              needDomLTPre = false;
+            }
+          }
+          if (c.operator === "<" || c.operator === "<=") {
+            lower = lowerLT(lt, c, options);
+            if (lower === c && lower !== lt) {
+              return false;
+            }
+          } else if (lt.operator === "<=" && !satisfies(lt.semver, String(c), options)) {
+            return false;
+          }
+        }
+        if (!c.operator && (lt || gt) && gtltComp !== 0) {
+          return false;
+        }
+      }
+      if (gt && hasDomLT && !lt && gtltComp !== 0) {
+        return false;
+      }
+      if (lt && hasDomGT && !gt && gtltComp !== 0) {
+        return false;
+      }
+      if (needDomGTPre || needDomLTPre) {
+        return false;
+      }
+      return true;
+    };
+    var higherGT = (a, b, options) => {
+      if (!a) {
+        return b;
+      }
+      const comp = compare2(a.semver, b.semver, options);
+      return comp > 0 ? a : comp < 0 ? b : b.operator === ">" && a.operator === ">=" ? b : a;
+    };
+    var lowerLT = (a, b, options) => {
+      if (!a) {
+        return b;
+      }
+      const comp = compare2(a.semver, b.semver, options);
+      return comp < 0 ? a : comp > 0 ? b : b.operator === "<" && a.operator === "<=" ? b : a;
+    };
+    module2.exports = subset;
+  }
+});
+
+// node_modules/semver/index.js
+var require_semver2 = __commonJS({
+  "node_modules/semver/index.js"(exports2, module2) {
+    "use strict";
+    var internalRe = require_re();
+    var constants3 = require_constants13();
+    var SemVer = require_semver();
+    var identifiers = require_identifiers();
+    var parse2 = require_parse3();
+    var valid2 = require_valid();
+    var clean = require_clean();
+    var inc = require_inc();
+    var diff = require_diff();
+    var major2 = require_major();
+    var minor = require_minor();
+    var patch = require_patch();
+    var prerelease = require_prerelease();
+    var compare2 = require_compare();
+    var rcompare = require_rcompare();
+    var compareLoose = require_compare_loose();
+    var compareBuild = require_compare_build();
+    var sort = require_sort();
+    var rsort = require_rsort();
+    var gt = require_gt();
+    var lt = require_lt();
+    var eq = require_eq();
+    var neq = require_neq();
+    var gte = require_gte();
+    var lte = require_lte();
+    var cmp = require_cmp();
+    var coerce2 = require_coerce();
+    var Comparator = require_comparator();
+    var Range = require_range();
+    var satisfies = require_satisfies();
+    var toComparators = require_to_comparators();
+    var maxSatisfying = require_max_satisfying();
+    var minSatisfying = require_min_satisfying();
+    var minVersion = require_min_version();
+    var validRange = require_valid2();
+    var outside = require_outside();
+    var gtr = require_gtr();
+    var ltr = require_ltr();
+    var intersects = require_intersects();
+    var simplifyRange = require_simplify();
+    var subset = require_subset();
+    module2.exports = {
+      parse: parse2,
+      valid: valid2,
+      clean,
+      inc,
+      diff,
+      major: major2,
+      minor,
+      patch,
+      prerelease,
+      compare: compare2,
+      rcompare,
+      compareLoose,
+      compareBuild,
+      sort,
+      rsort,
+      gt,
+      lt,
+      eq,
+      neq,
+      gte,
+      lte,
+      cmp,
+      coerce: coerce2,
+      Comparator,
+      Range,
+      satisfies,
+      toComparators,
+      maxSatisfying,
+      minSatisfying,
+      minVersion,
+      validRange,
+      outside,
+      gtr,
+      ltr,
+      intersects,
+      simplifyRange,
+      subset,
+      SemVer,
+      re: internalRe.re,
+      src: internalRe.src,
+      tokens: internalRe.t,
+      SEMVER_SPEC_VERSION: constants3.SEMVER_SPEC_VERSION,
+      RELEASE_TYPES: constants3.RELEASE_TYPES,
+      compareIdentifiers: identifiers.compareIdentifiers,
+      rcompareIdentifiers: identifiers.rcompareIdentifiers
+    };
   }
 });
 
@@ -66926,6 +68998,7 @@ var RawString = class {
     this.s = s;
   }
 };
+var jj = (ss, ...vals) => pp(ss, ...vals);
 
 // packages/utils/common/lib/exceptions.js
 var __decorate = function(decorators, target, key, desc) {
@@ -67596,6 +69669,10 @@ var throwOnTimeout = async ({ label, timeoutMs, promise, interrupt }) => {
 };
 
 // packages/utils/common/lib/array.js
+var filterSplit = (items, filter) => [
+  items.filter((x, i, arr) => !filter(x, i, arr)),
+  items.filter(filter)
+];
 var flatten1 = (arr) => {
   const flat = [];
   for (const items of arr) {
@@ -68859,7 +70936,7 @@ var runMain = (main2) => {
 };
 
 // packages/integrations/lib/deploy.js
-var import_path4 = __toESM(require("path"), 1);
+var import_path3 = __toESM(require("path"), 1);
 
 // packages/deployment-service/common/lib/api/replica.js
 var import_inversify2 = __toESM(require_inversify(), 1);
@@ -70740,6 +72817,7 @@ var AVAILABLE_FEATURES = [
   "dev-domains-port",
   "email-signup",
   "email-signin",
+  "run-as-root-insecure",
   "standalone-teams"
 ];
 var availableFeatures = [...AVAILABLE_FEATURES];
@@ -70755,23 +72833,19 @@ var isFeatureEnabled = (name) => {
   }
   return enabled.has(name);
 };
-
-// packages/utils/common/lib/path.js
-var import_path = require("path");
-var POSIX_PATH_REGEX = new RegExp("^/?(?:[^/\0]+/?)*$");
-var toPosixPath2 = (p) => {
-  const s = toString(p);
-  if (!POSIX_PATH_REGEX.test(s)) {
-    throw new TypeConversionFailure("POSIX path", p);
+var setEnabledFeatures = (features) => {
+  const [unknown, known] = filterSplit(features, (x) => availableFeatures.includes(x));
+  if (0 !== unknown.length) {
+    logW(jj`unknown experiments provided: ${unknown}`);
   }
-  return s;
+  enabled = new Set(known);
+  return {
+    available: Object.freeze([...availableFeatures]),
+    enabled: Object.freeze(known)
+  };
 };
-var toPathWithoutTraversal = (p) => {
-  const s = toPosixPath2(p);
-  if (s.split(import_path.sep).includes("..")) {
-    throw new TypeConversionFailure("path without ..", p);
-  }
-  return s;
+var initFeatures = (features = []) => {
+  return setEnabledFeatures(features);
 };
 
 // packages/utils/common/lib/typing/url.js
@@ -70801,6 +72875,53 @@ var prepareUrlPathRegex = () => {
 var validUrlPathRegex = prepareUrlPathRegex();
 var toUrlPath = toStringMatchingRegex("UrlPath", validUrlPathRegex);
 
+// packages/utils/common/lib/url.js
+var devDomainRegex = /^(?:ide-|preview-)?(?<wsId>\d+)(?:-(?<port>\d+))?(?<server>-[a-z0-9-]*)?\./;
+var csInCsDomains = [".dev.5.codesphere.com", ".cloud.codesphere.com"];
+var isDevDomainWithWsId = (host) => {
+  const hostname = host.split(":")[0];
+  return devDomainRegex.test(hostname) && csInCsDomains.some((d) => hostname.endsWith(d));
+};
+var isLocalHost = (host) => host.split(":")[0] === "localhost" || host.split(":")[0] === "127.0.0.1";
+var isDevHost = (host) => [".dev.codesphere.com", "3.codesphere.com", "5.codesphere.com"].some((s) => host.endsWith(s));
+var createBaseUrl = (protocol, host, dc) => {
+  if (host.includes("://")) {
+    throw new InvalidArgument3("Host should not contain protocol.");
+  }
+  const p = isLocalHost(host) ? protocol : `${protocol}s`;
+  const prefix = !has(dc) || isLocalHost(host) || host.startsWith(`${dc}.`) || isDevDomainWithWsId(host) ? "" : `${dc}${isDevHost(host) ? "-" : "."}`;
+  return new URL(`${p}://${prefix}${host}`);
+};
+var createServiceUrl = (protocol, host, servicePath, dc) => {
+  const u = createBaseUrl(protocol, host, dc);
+  u.pathname = servicePath;
+  return u;
+};
+var joinPath = (...segments) => {
+  return [
+    segments[0] === "/" ? "" : segments[0],
+    ...segments.slice(1).map((s) => trimPrefix(s, "/"))
+  ].join("/");
+};
+
+// packages/utils/common/lib/path.js
+var import_path = require("path");
+var POSIX_PATH_REGEX = new RegExp("^/?(?:[^/\0]+/?)*$");
+var toPosixPath2 = (p) => {
+  const s = toString(p);
+  if (!POSIX_PATH_REGEX.test(s)) {
+    throw new TypeConversionFailure("POSIX path", p);
+  }
+  return s;
+};
+var toPathWithoutTraversal = (p) => {
+  const s = toPosixPath2(p);
+  if (s.split(import_path.sep).includes("..")) {
+    throw new TypeConversionFailure("path without ..", p);
+  }
+  return s;
+};
+
 // packages/workspace-agent/common/lib/pipeline/types.js
 var singleRunningStageKinds = ["prepare", "test"];
 var multiRunningStageKinds = ["run"];
@@ -70823,14 +72944,9 @@ var toUrl = (x) => {
     throw new TypeConversionFailure("URL string", x);
   }
 };
-var toCustomImageOpts = toObject({
-  useDefaultEntrypoint: toBoolean,
-  args: toUndefOr(toArray(toString))
-});
 var toStage = toObject({
   steps: toArray(toStep),
-  healthEndpoint: toUndefOr(toUrl),
-  customImageOpts: toUndefOr(toCustomImageOpts)
+  healthEndpoint: toUndefOr(toUrl)
 });
 var toEnvValue = toOr(toString, toNumber);
 var toEnv = toRecord(toEnvValue);
@@ -70853,27 +72969,38 @@ var toAdvancedNetworkConfig = toObject({
 });
 var toNetworkConfig = toOr(toSimpleNetworkConfig, toAdvancedNetworkConfig);
 var MAX_USER_GROUP_ID = 2 ** 31 - 1;
-var toUserGroupId = toRestrictedNumber("toUserGroupId", (n) => n >= 0 && n <= MAX_USER_GROUP_ID);
-var toCustomVolumeMounts = toArray(toObject({
+var toUserGroupId = ({ forceAllowRoot = false } = {}) => toRestrictedNumber("toUserGroupId", (n) => {
+  const allowRoot = forceAllowRoot || isFeatureEnabled("run-as-root-insecure");
+  return n >= (allowRoot ? 0 : 1) && n <= MAX_USER_GROUP_ID;
+});
+var toVolumeMounts = toArray(toObject({
+  name: toLiteral("_workspace"),
   mountPath: toString,
-  subPath: toPathWithoutTraversal
+  workspacePath: toPathWithoutTraversal
 }));
-var toDeployStageServerFields = {
-  steps: toArray(toStep),
+var toDeployStageServerCommonFields = {
   healthEndpoint: toUndefOr(toUrl),
   plan: toUndefOr(toPlanId),
   replicas: toUndefOr(toPositiveInteger),
   isPublic: toUndefOr(toBoolean),
-  mountSubPath: toUndefOr(toPathWithoutTraversal),
   network: toUndefOr(toOr(toSimpleNetworkConfig, toAdvancedNetworkConfig)),
   env: toUndefOr(toEnv),
-  baseImage: toUndefOr(toString),
-  runAsUser: toUndefOr(toUserGroupId),
-  runAsGroup: toUndefOr(toUserGroupId),
-  customImageOpts: toUndefOr(toCustomImageOpts),
-  customMounts: toUndefOr(toCustomVolumeMounts)
+  runAsUser: toUndefOr(toUserGroupId({ forceAllowRoot: true })),
+  runAsGroup: toUndefOr(toUserGroupId({ forceAllowRoot: true })),
+  volumeMounts: toUndefOr(toVolumeMounts)
 };
-var toDeployStageServer = toObject(toDeployStageServerFields);
+var toDeployStageServerReactive = toObject({
+  ...toDeployStageServerCommonFields,
+  steps: toArray(toStep),
+  image: toUndefOr(toNonEmptyString)
+});
+var toDeployStageServerContainerRuntime = toObject({
+  ...toDeployStageServerCommonFields,
+  steps: toUndef,
+  image: toNonEmptyString,
+  command: toUndefOr(toArray(toString))
+});
+var toDeployStageServer = toOr(toDeployStageServerReactive, toDeployStageServerContainerRuntime);
 var isDeployStageServer = (x) => isOfType(x, toDeployStageServer);
 var toManagedServiceConfigFields = {
   provider: toObject({
@@ -70984,13 +73111,12 @@ var server = {
   name: readOnly(toMsdServerName),
   planId: toPlanId,
   replicas: toPositiveInteger,
-  mountSubPath: toUndefOr(toPathWithoutTraversal),
   network: toServerNetwork,
   baseImage: toUndefOr(toString),
   env: toUndefOr(toEnv),
   runAsUser: toUndefOr(toNonNegativeInteger),
   runAsGroup: toUndefOr(toNonNegativeInteger),
-  customMounts: toUndefOr(toCustomVolumeMounts)
+  volumeMounts: toUndefOr(toVolumeMounts)
 };
 var toServer = toObject(server);
 var toHeadlessService = toObject({
@@ -71047,12 +73173,11 @@ var deployStageServerToLandscape = (name, config) => toServer({
   name,
   planId: config.plan,
   replicas: config.replicas ?? 1,
-  mountSubPath: config.mountSubPath || void 0,
   env: config.env,
-  baseImage: config.baseImage || void 0,
+  baseImage: config.image,
   runAsUser: config.runAsUser ?? void 0,
   runAsGroup: config.runAsGroup ?? void 0,
-  customMounts: config.customMounts,
+  volumeMounts: config.volumeMounts,
   network: config.network && isAdvancedNetworkConfig(config.network) ? advancedNetworkToServerNetwork(config.network) : simpleNetworkToServerNetwork(config.network, config.isPublic)
 });
 
@@ -72338,31 +74463,6 @@ AuthStub = __decorate8([
 
 // packages/auth-service/common/lib/session/api.js
 var import_inversify7 = __toESM(require_inversify(), 1);
-
-// packages/utils/common/lib/url.js
-var isLocalHost = (host) => host.split(":")[0] === "localhost" || host.split(":")[0] === "127.0.0.1";
-var isDevHost = (host) => [".dev.codesphere.com", "3.codesphere.com", "5.codesphere.com"].some((s) => host.endsWith(s));
-var createBaseUrl = (protocol, host, dc) => {
-  if (host.includes("://")) {
-    throw new InvalidArgument3("Host should not contain protocol.");
-  }
-  const p = isLocalHost(host) ? protocol : `${protocol}s`;
-  const prefix = !has(dc) || isLocalHost(host) || host.startsWith(`${dc}.`) ? "" : `${dc}${isDevHost(host) ? "-" : "."}`;
-  return new URL(`${p}://${prefix}${host}`);
-};
-var createServiceUrl = (protocol, host, servicePath, dc) => {
-  const u = createBaseUrl(protocol, host, dc);
-  u.pathname = servicePath;
-  return u;
-};
-var joinPath = (...segments) => {
-  return [
-    segments[0],
-    ...segments.slice(1).map((s) => trimPrefix(s, "/"))
-  ].join("/");
-};
-
-// packages/auth-service/common/lib/session/api.js
 var __decorate9 = function(decorators, target, key, desc) {
   var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
   if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -72827,15 +74927,19 @@ var TimeTracker = class {
       throw new Error(`already ran: ${label}`);
     }
     const start = (/* @__PURE__ */ new Date()).getTime();
+    let state = "in-progress";
+    const index = this.times.push({ state, label, durationS: 0 }) - 1;
     try {
-      return await func();
+      const result = await func();
+      state = "ok";
+      return result;
     } catch (e) {
-      label = `FAILED ${label}`;
+      state = "FAIL";
       throw e;
     } finally {
       const durationS = ((/* @__PURE__ */ new Date()).getTime() - start) / 1e3;
-      this.times.push({ label, durationS });
-      console.log(`RAN in ${durationS}s: ${label}`);
+      this.times[index] = { state, label, durationS };
+      console.log(`[${state}] RAN in ${durationS}s: ${label}`);
     }
   }
 };
@@ -73602,7 +75706,7 @@ var equal = (value, other) => {
   if (value === other) {
     return true;
   }
-  const compare = (item1, item2) => {
+  const compare2 = (item1, item2) => {
     const item1Type = Object.prototype.toString.call(item1);
     if (["[object Array]", "[object Object]"].indexOf(item1Type) >= 0) {
       return equal(item1, item2);
@@ -73629,14 +75733,14 @@ var equal = (value, other) => {
   }
   if (typeValue === "[object Array]") {
     for (let i = 0; i < valueLen; i++) {
-      if (!compare(value[i], other[i])) {
+      if (!compare2(value[i], other[i])) {
         return false;
       }
     }
   } else {
     for (const key in value) {
       if (value.hasOwnProperty(key)) {
-        if (!compare(value[key], other[key])) {
+        if (!compare2(value[key], other[key])) {
           return false;
         }
       }
@@ -75530,6 +77634,61 @@ TeamStub = __decorate16([
   (0, import_inversify12.injectable)()
 ], TeamStub);
 
+// packages/utils/common/lib/experiments.js
+var MAINTENANCE_MODE_EXP_NAME = "maintenance-mode";
+var AVAILABLE_EXPERIMENTS = [
+  "allow-legacy-ci",
+  "custom-service-image",
+  "external-mounter",
+  "gateway-domains",
+  "git-panel",
+  "gpu-plan",
+  "hermetic",
+  "headless-services",
+  "language-server",
+  "legacy-marketplace",
+  "managed-services",
+  MAINTENANCE_MODE_EXP_NAME,
+  "ms-in-ls",
+  "msd",
+  "o11y",
+  "organizations",
+  "overview-react",
+  "persistent-logs",
+  "persistent-nix",
+  "preview-comments",
+  "privileged-ports",
+  "react-create-ws",
+  "recaptcha-v3",
+  "recursive-watcher",
+  "secret-management",
+  "single-workspace-mode",
+  "sub-path-mount",
+  "time-sameDc",
+  "tcp-udp",
+  "vcluster",
+  "virtual-machines",
+  "vpn",
+  "ws-vscode-server"
+];
+var availableExperiments = [...AVAILABLE_EXPERIMENTS];
+var toExperimentName = toLiteralUnion("ExperimentName", availableExperiments);
+var enabled2;
+var setEnabledExperiments = (expts) => {
+  const [unknown, known] = filterSplit(expts, (x) => availableExperiments.includes(x));
+  if (0 !== unknown.length) {
+    logW(jj`unknown experiments provided: ${unknown}`);
+  }
+  enabled2 = new Set(known);
+  return {
+    available: Object.freeze([...availableExperiments]),
+    enabled: Object.freeze(known)
+  };
+};
+var initExperiments = (expts = []) => {
+  setEnabledExperiments(expts);
+};
+
 // packages/workspace-proxy/common/lib/api/pipeline.js
 var import_inversify13 = __toESM(require_inversify(), 1);
 var __decorate17 = function(decorators, target, key, desc) {
@@ -75804,10 +77963,12 @@ var toEvent = toObject({
 // packages/utils/common/lib/typing/jsonSchema.js
 var import_ajv = __toESM(require_ajv(), 1);
 var import_ajv_formats = __toESM(require_dist2(), 1);
+var import_semver2 = __toESM(require_semver2(), 1);
 var addFormats = import_ajv_formats.default;
 var UpdateConstraint;
 (function(UpdateConstraint2) {
   UpdateConstraint2["IncreaseOnly"] = "increase-only";
+  UpdateConstraint2["MinorUpgradeOnly"] = "minor-upgrade-only";
   UpdateConstraint2["Immutable"] = "immutable";
 })(UpdateConstraint || (UpdateConstraint = {}));
 var SUPPORTED_FORMATS = [
@@ -75823,6 +77984,29 @@ var SUPPORTED_FORMATS = [
   "uri",
   "hostname"
 ];
+var normalizeSemver = (value) => {
+  const normalizedSegments = value.split("-").map((segment) => (0, import_semver2.coerce)(segment)?.version ?? segment);
+  return normalizedSegments.join("-");
+};
+var satisfiesIncreaseOnlyConstraint = (newValue, currentValue) => {
+  return isNumber(newValue) && isNumber(currentValue) && newValue >= currentValue;
+};
+var satisfiesMinorUpgradeOnlyConstraint = (newValue, currentValue) => {
+  if (!isString(newValue) || !isString(currentValue)) {
+    return false;
+  }
+  const normalizedNewValue = normalizeSemver(newValue);
+  const normalizedCurrentValue = normalizeSemver(currentValue);
+  if (!(0, import_semver2.valid)(normalizedNewValue) || !(0, import_semver2.valid)(normalizedCurrentValue)) {
+    return false;
+  }
+  const newMajor = (0, import_semver2.coerce)(normalizedNewValue)?.major;
+  const currentMajor = (0, import_semver2.coerce)(normalizedCurrentValue)?.major;
+  if (newMajor === void 0 || currentMajor === void 0) {
+    return false;
+  }
+  return newMajor === currentMajor && (0, import_semver2.compare)(normalizedNewValue, normalizedCurrentValue) >= 0;
+};
 var compile = (schema, options) => {
   const ajv = new import_ajv.Ajv({
     allErrors: true,
@@ -75848,7 +78032,17 @@ var compile = (schema, options) => {
         if (currentValue === void 0 || currentValue === null) {
           return true;
         }
-        return isNumber(newValue) && isNumber(currentValue) && newValue >= currentValue;
+        return satisfiesIncreaseOnlyConstraint(newValue, currentValue);
+      }
+      if (constraint === UpdateConstraint.MinorUpgradeOnly) {
+        if (!this?.previousValues) {
+          return true;
+        }
+        const currentValue = this?.previousValues?.[key];
+        if (currentValue === void 0 || currentValue === null) {
+          return true;
+        }
+        return satisfiesMinorUpgradeOnlyConstraint(newValue, currentValue);
       }
       if (constraint === UpdateConstraint.Immutable) {
         const prevValue = this?.previousValues?.[key];
@@ -75904,8 +78098,10 @@ var mutablePropertiesConv = {
   plan: toPlanSelection,
   config: toConfig
 };
-var toProviderName = toStringMatchingRegex("ProviderName", /^[a-z0-9\-_]+$/);
-var toProviderVersion = toStringMatchingRegex("ProviderVersion", /^v[0-9][0-9a-z]*$/);
+var providerNamePattern = "^[a-z0-9-_]+$";
+var toProviderName = toStringMatchingRegex("ProviderName", new RegExp(providerNamePattern));
+var providerVersionPattern = "^v[0-9][0-9a-z]*$";
+var toProviderVersion = toStringMatchingRegex("ProviderVersion", new RegExp(providerVersionPattern));
 var immutablePropertiesConv = {
   provider: toProviderName,
   providerVersion: toProviderVersion
@@ -75918,21 +78114,33 @@ var toRecoveryRef = toOr(toObject({
 }));
 var toBackupDeleteRetentionDays = toRestrictedInteger("backup delete retention must be >= 1 day and <= 1 year", (n) => n >= 1 && n <= duration({ years: 1 }).asDays());
 var toBackupIntervalH = toRestrictedInteger("backup interval must be >= 1 hour and <= 1 month", (n) => n >= 1 && n <= duration({ months: 1 }).asHours());
-var toBackupConfig = toOr(toObject({
+var toBackupSettings = toOr(toObject({
   enabled: toLiteral(true),
   deleteRetentionDays: toBackupDeleteRetentionDays,
-  intervalH: toBackupIntervalH
+  intervalH: toBackupIntervalH,
+  config: toRecord(toUnknown)
 }), toObject({
   enabled: toLiteral(false),
   deleteRetentionDays: toUndefOr(toBackupDeleteRetentionDays),
-  intervalH: toUndefOr(toBackupIntervalH)
+  intervalH: toUndefOr(toBackupIntervalH),
+  config: toUndefOr(toRecord(toUnknown))
 }));
 var toCreateManagedServiceArgs = toObject({
   ...immutablePropertiesConv,
   ...mutablePropertiesConv,
-  backups: toObject({
-    config: toBackupConfig
-  }),
+  backups: toOr(toObject({
+    enabled: toLiteral(true),
+    deleteRetentionDays: toBackupDeleteRetentionDays,
+    intervalH: toBackupIntervalH,
+    config: toConfig,
+    secrets: toSecrets
+  }), toObject({
+    enabled: toLiteral(false),
+    deleteRetentionDays: toUndefOr(toBackupDeleteRetentionDays),
+    intervalH: toUndefOr(toBackupIntervalH),
+    config: toUndefOr(toConfig),
+    secrets: toUndefOr(toSecrets)
+  })),
   secrets: toSecrets,
   teamId: toNonNegativeInteger,
   workspaceId: toUndefOr(toNonNegativeInteger),
@@ -75969,10 +78177,19 @@ var toBackup = toObject({
 });
 var toManagedService = toObject({
   id: toUuid,
-  backups: toObject({
-    config: toBackupConfig,
-    entries: toArray(toBackup)
-  }),
+  backups: toOr(toObject({
+    enabled: toLiteral(true),
+    entries: toArray(toBackup),
+    deleteRetentionDays: toBackupDeleteRetentionDays,
+    intervalH: toBackupIntervalH,
+    config: toConfig
+  }), toObject({
+    enabled: toLiteral(false),
+    entries: toArray(toBackup),
+    deleteRetentionDays: toUndefOr(toBackupDeleteRetentionDays),
+    intervalH: toUndefOr(toBackupIntervalH),
+    config: toUndefOr(toConfig)
+  })),
   creatorId: toInteger,
   ...immutablePropertiesConv,
   ...mutablePropertiesConv,
@@ -75984,17 +78201,17 @@ var toManagedService = toObject({
 var toUpdateManagedServiceArgs = toObject({
   id: toUuid,
   backups: toUndefOr(toObject({
-    config: toUndefOr(toObject({
-      enabled: toUndefOr(toBoolean),
-      deleteRetentionDays: toUndefOr(toPositiveInteger),
-      intervalH: toUndefOr(toPositiveInteger)
-    }))
+    enabled: toUndefOr(toBoolean),
+    deleteRetentionDays: toUndefOr(toBackupDeleteRetentionDays),
+    intervalH: toUndefOr(toBackupIntervalH),
+    config: toUndefOr(toConfig),
+    secrets: toUndefOr(toSecrets)
   })),
-  config: toUndefOr(toRecord(toUnknown)),
+  config: toUndefOr(toConfig),
   name: toUndefOr(toString),
   pause: toUndefOr(toBoolean),
   plan: toUndefOr(toPlanSelection),
-  secrets: toUndefOr(toRecord(toUnknown))
+  secrets: toUndefOr(toSecrets)
 });
 var toListManagedServiceArgs = toObject({
   ...teamServiceArgs,
@@ -76023,6 +78240,10 @@ var toManagedServicePlan = toObject({
 var managedServiceProviderCommonProperties = {
   name: toProviderName,
   author: toString,
+  backups: toUndefOr(toObject({
+    configSchema: toSchemaObject,
+    secretsSchema: toSchemaObject
+  })),
   capabilities: toCapabilities,
   category: toString,
   configSchema: toSchemaObject,
@@ -76050,6 +78271,10 @@ var toManagedServiceLandscapeProvider = toObject({
 });
 var toPartialManagedServiceLandscapeProvider = toObject({
   author: toUndefOr(toString),
+  backups: toUndefOr(toObject({
+    configSchema: toSchemaObject,
+    secretsSchema: toSchemaObject
+  })),
   capabilities: toUndefOr(toCapabilities),
   category: toUndefOr(toString),
   configSchema: toUndefOr(toSchemaObject),
@@ -76062,7 +78287,13 @@ var toPartialManagedServiceLandscapeProvider = toObject({
   scope: toUndefOr(toProviderScope),
   backend: toUndefOr(toLandscapeSettings)
 });
-var toManagedServiceProvider = toOr(toManagedServiceRestProvider, toManagedServiceLandscapeProvider);
+var toManagedServiceProvider = (x) => {
+  const prov = toOr(toManagedServiceRestProvider, toManagedServiceLandscapeProvider)(x);
+  if ((prov.capabilities?.backups || prov.capabilities?.pointInTimeRecovery) && prov.backups === void 0) {
+    throw new TypeConversionFailure("Providers with capability backup or pointInTimeRecovery must define backups.configSchema and backups.secretsSchema", prov.backups);
+  }
+  return prov;
+};
 var toRestBackendConfig = toObject({
   api: toObject({
     endpoint: toString,
@@ -76071,6 +78302,10 @@ var toRestBackendConfig = toObject({
 });
 var managedServiceProviderConfigProperties = {
   name: toProviderName,
+  backups: toUndefOr(toObject({
+    configSchema: toSchemaObject,
+    secretsSchema: toSchemaObject
+  })),
   version: toProviderVersion,
   displayName: toUndefOr(toString),
   description: toUndefOr(toString),
@@ -76156,6 +78391,13 @@ var managedServicesService = {
       request: toUuid,
       response: toUndefOr(toRecord(toUnknown))
     }),
+    scheduleBackup: rpc({
+      access: "public",
+      request: toObject({
+        id: toUuid
+      }),
+      response: toBackup
+    }),
     update: rpc({
       access: "public",
       request: toUpdateManagedServiceArgs,
@@ -76226,6 +78468,7 @@ var toUpdateLandscapeArgs = toObject({
 });
 var toSyncError = toObject({ message: toString });
 var toManagedService2 = toObject({
+  id: toUndefOr(toUuid),
   config: toManagedServiceConfig,
   status: toOr(toManagedServiceStatus, toSyncError)
 });
@@ -76346,7 +78589,7 @@ var GetBrowserConfigFailed = class extends Exception {
   }
 };
 var codesphereWorkspaceUrl = (apiUrl, w) => {
-  return new URL(import_path4.default.posix.join(apiUrl.pathname, `/ide/teams/${w.teamId}/workspaces/${w.id}`), apiUrl);
+  return new URL(import_path3.default.posix.join(apiUrl.pathname, `/ide/teams/${w.teamId}/workspaces/${w.id}`), apiUrl);
 };
 var codespherePreviewUrl = (apiUrl, w) => {
   const wsUrl = codesphereWorkspaceUrl(apiUrl, w);
@@ -76440,6 +78683,19 @@ var runWorkspacePipeline = async (pipeline, workspace2, profile) => {
     profile
   });
   await runPipelineStage("run", "running", pipeline, workspace2.id, { profile });
+};
+var initRuntimeFlags = async (apiUrl) => {
+  const ideServiceUrl = new URL(joinPath(apiUrl.pathname, "ide-service"), apiUrl);
+  const experimentsUrl = new URL(joinPath(ideServiceUrl.pathname, "experiments"), ideServiceUrl);
+  const featuresUrl = new URL(joinPath(ideServiceUrl.pathname, "features"), ideServiceUrl);
+  const experiments = await fetchJson(experimentsUrl, {
+    converter: toExperiments
+  });
+  initExperiments(experiments.enabled);
+  const features = await fetchJson(featuresUrl, {
+    converter: toFeatures2
+  });
+  initFeatures(features.enabled);
 };
 var getCiLandscape = async (pipeline, workspaceId, profile) => {
   const s = await pipeline.pipelineStream();
@@ -76585,6 +78841,7 @@ var run = async (config, status) => {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   }
   const { serviceUrl, serviceUrlDc } = serviceUrlCreators(config.apiUrl);
+  await initRuntimeFlags(config.apiUrl);
   const creds = await authenticate(serviceUrl("auth-service"), config.authentication.email, config.authentication.password);
   const t = await withAuthnStub(TeamStub, serviceUrl("team-service"), creds.accessToken, (stub) => getTeam(stub, config.teamName));
   if (config.pullRequest.open) {
