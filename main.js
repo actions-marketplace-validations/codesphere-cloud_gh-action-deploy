@@ -68934,6 +68934,7 @@ var isNumber = (x) => "number" === typeof x;
 var isObject = (x) => "object" === typeof x;
 var isString = (x) => "string" === typeof x;
 var isPositiveInteger = (x) => isNumber(x) && Number.isInteger(x) && x > 0;
+var isNonNegativeInteger = (x) => isNumber(x) && Number.isInteger(x) && x >= 0;
 var isRecord = (x) => x !== null && isObject(x) && !Array.isArray(x);
 
 // packages/utils/common/lib/datetime.js
@@ -71959,7 +71960,7 @@ var SimpleStreamyClient = class _SimpleStreamyClient {
   static async forTransportWithProtocol(transport, serializer, protocol, rpcOptions) {
     return new _SimpleStreamyClient(transport, serializer, protocol, rpcOptions);
   }
-  constructor(transport, serializer, protocol = ProtocolVersion.Legacy, rpcOptions) {
+  constructor(transport, serializer, protocol = ProtocolVersion.Streamy, rpcOptions) {
     this.transport = transport;
     this.serializer = serializer;
     this.protocol = protocol;
@@ -72874,22 +72875,69 @@ var prepareUrlPathRegex = () => {
 };
 var validUrlPathRegex = prepareUrlPathRegex();
 var toUrlPath = toStringMatchingRegex("UrlPath", validUrlPathRegex);
+var prepareFullUrlRegex = () => {
+  const unReservedCharsGroup = "-._~a-zA-Z0-9";
+  const subDelims = "!$&'()*+,;=";
+  const other = ":@";
+  const dot = "\\.";
+  const labelInner = `[a-zA-Z0-9-]`;
+  const labelEdge = `[a-zA-Z0-9]`;
+  const label = `${labelEdge}(?:${labelInner}*${labelEdge})?`;
+  const pathSegmentCharsClass = [
+    "[",
+    unReservedCharsGroup,
+    subDelims,
+    other,
+    ".?]"
+  ].join("");
+  const knownProtocols = "https?|ftps?|wss?";
+  const regexp = [
+    `^(?:${knownProtocols})://`,
+    `${label}`,
+    `(?:${dot}${label})*`,
+    "(?::\\d+)?",
+    `(?:/(?:${pathSegmentCharsClass}+(?:/${pathSegmentCharsClass}+)*/?)?)?`,
+    "$"
+  ].join("");
+  return new RegExp(regexp);
+};
+var validFullUrlRegex = prepareFullUrlRegex();
+var toFullUrlByRegex = toStringMatchingRegex("FullUrl", validFullUrlRegex);
+var toFullUrl = (x) => {
+  try {
+    const url = new URL(toFullUrlByRegex(x));
+    return toString(x);
+  } catch {
+    throw new TypeConversionFailure("URL string", x);
+  }
+};
 
 // packages/utils/common/lib/url.js
 var devDomainRegex = /^(?:ide-|preview-)?(?<wsId>\d+)(?:-(?<port>\d+))?(?<server>-[a-z0-9-]*)?\./;
-var csInCsDomains = [".dev.5.codesphere.com", ".cloud.codesphere.com"];
-var isDevDomainWithWsId = (host) => {
+var csInCsDomains = [
+  ".dev.5.codesphere.com",
+  ".cloud.codesphere.com",
+  ".2.codesphere.com",
+  ".dev-codesphere.com"
+];
+var isWorkspaceDomainWithWsId = (host) => {
   const hostname = host.split(":")[0];
   return devDomainRegex.test(hostname) && csInCsDomains.some((d) => hostname.endsWith(d));
 };
 var isLocalHost = (host) => host.split(":")[0] === "localhost" || host.split(":")[0] === "127.0.0.1";
-var isDevHost = (host) => [".dev.codesphere.com", "3.codesphere.com", "5.codesphere.com"].some((s) => host.endsWith(s));
+var isDevHost = (host) => [
+  ".dev.codesphere.com",
+  "3.codesphere.com",
+  "5.codesphere.com",
+  ".dev-codesphere.com"
+].some((s) => host.endsWith(s));
+var isQaHost = (host) => host.endsWith("qa.dev-codesphere.com");
 var createBaseUrl = (protocol, host, dc) => {
   if (host.includes("://")) {
     throw new InvalidArgument3("Host should not contain protocol.");
   }
   const p = isLocalHost(host) ? protocol : `${protocol}s`;
-  const prefix = !has(dc) || isLocalHost(host) || host.startsWith(`${dc}.`) || isDevDomainWithWsId(host) ? "" : `${dc}${isDevHost(host) ? "-" : "."}`;
+  const prefix = !has(dc) || isLocalHost(host) || host.startsWith(`${dc}.`) || isWorkspaceDomainWithWsId(host) ? "" : `${dc}${isDevHost(host) && !isQaHost(host) ? "-" : "."}`;
   return new URL(`${p}://${prefix}${host}`);
 };
 var createServiceUrl = (protocol, host, servicePath, dc) => {
@@ -75340,6 +75388,22 @@ var SqlLimit = class extends SqlPartWithValue {
     return this.limit;
   }
 };
+var SqlOffset = class extends SqlPartWithValue {
+  constructor(offset, paramIndex) {
+    if (!isNonNegativeInteger(offset)) {
+      throw new InvalidArgument3("Offset must be a non-negative integer.");
+    }
+    super();
+    this.offset = offset;
+    this.paramIndex = paramIndex;
+  }
+  toSql(dialect) {
+    return `OFFSET $${this.paramIndex.next().value}`;
+  }
+  getVal() {
+    return this.offset;
+  }
+};
 var SqlOrderBy = class extends SqlPartWithValue {
   constructor(column, direction) {
     super();
@@ -75361,6 +75425,9 @@ var SqlRefinement = class _SqlRefinement extends SqlPartWithValue {
     }
     if (refinement.limit !== void 0) {
       refinements.push(new SqlLimit(refinement.limit, paramIndex));
+    }
+    if (refinement.offset !== void 0) {
+      refinements.push(new SqlOffset(refinement.offset, paramIndex));
     }
     return new _SqlRefinement(refinements);
   }
@@ -78107,10 +78174,14 @@ var immutablePropertiesConv = {
   providerVersion: toProviderVersion
 };
 var toRecoveryRef = toOr(toObject({
-  id: toUuid
+  id: toUuid,
+  config: toConfig,
+  secrets: toSecrets
 }), toObject({
   msId: toUuid,
-  time: toDate
+  time: toDate,
+  config: toConfig,
+  secrets: toSecrets
 }));
 var toBackupDeleteRetentionDays = toRestrictedInteger("backup delete retention must be >= 1 day and <= 1 year", (n) => n >= 1 && n <= duration({ years: 1 }).asDays());
 var toBackupIntervalH = toRestrictedInteger("backup interval must be >= 1 hour and <= 1 month", (n) => n >= 1 && n <= duration({ months: 1 }).asHours());
@@ -78190,6 +78261,7 @@ var toManagedService = toObject({
     intervalH: toUndefOr(toBackupIntervalH),
     config: toUndefOr(toConfig)
   })),
+  createdAt: toDate,
   creatorId: toInteger,
   ...immutablePropertiesConv,
   ...mutablePropertiesConv,
@@ -78480,7 +78552,7 @@ var toSyncLandscapeArgs = toObject({
 var toHeadlessServiceNetwork = toObject({
   path: toUrlPath,
   stripPath: toBoolean,
-  target: toString
+  target: toFullUrl
 });
 var toLandscapeNetwork = toObject({
   servers: toRecord(toServerNetwork),
