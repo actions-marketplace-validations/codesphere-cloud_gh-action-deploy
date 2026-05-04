@@ -18220,7 +18220,7 @@ var require_util5 = __commonJS({
     var { serializeAMimeType, parseMIMEType } = require_data_url();
     var { types: types2 } = require("node:util");
     var { StringDecoder } = require("string_decoder");
-    var { btoa: btoa2 } = require("node:buffer");
+    var { btoa } = require("node:buffer");
     var staticPropertyDescriptors = {
       enumerable: true,
       writable: false,
@@ -18312,9 +18312,9 @@ var require_util5 = __commonJS({
           dataURL += ";base64,";
           const decoder = new StringDecoder("latin1");
           for (const chunk of bytes2) {
-            dataURL += btoa2(decoder.write(chunk));
+            dataURL += btoa(decoder.write(chunk));
           }
-          dataURL += btoa2(decoder.end());
+          dataURL += btoa(decoder.end());
           return dataURL;
         }
         case "Text": {
@@ -36622,7 +36622,7 @@ var require_util13 = __commonJS({
     var { serializeAMimeType, parseMIMEType } = require_data_url2();
     var { types: types2 } = require("node:util");
     var { StringDecoder } = require("string_decoder");
-    var { btoa: btoa2 } = require("node:buffer");
+    var { btoa } = require("node:buffer");
     var staticPropertyDescriptors = {
       enumerable: true,
       writable: false,
@@ -36714,9 +36714,9 @@ var require_util13 = __commonJS({
           dataURL += ";base64,";
           const decoder = new StringDecoder("latin1");
           for (const chunk of bytes2) {
-            dataURL += btoa2(decoder.write(chunk));
+            dataURL += btoa(decoder.write(chunk));
           }
-          dataURL += btoa2(decoder.end());
+          dataURL += btoa(decoder.end());
           return dataURL;
         }
         case "Text": {
@@ -70141,6 +70141,12 @@ var InvalidCertificate = class extends Exception {
     super(message);
   }
 };
+var FetchFailed = class extends Exception {
+  constructor(details, opts) {
+    super(pp`${details}`, { ...opts, scope: "internal" });
+    this.details = details;
+  }
+};
 var toNodeError = toObject({
   name: toString,
   message: toString,
@@ -70156,11 +70162,15 @@ var fetch = async (url, options = {}) => {
   if (headers.get("host")) {
     throw new InvalidArgument("Cannot set host header in fetch request");
   }
+  const method = options.method?.toUpperCase() ?? "GET";
   const c = new AbortController();
+  options?.signal?.addEventListener("abort", (e) => {
+    c.abort(e);
+  });
   const opts = {
-    signal: c.signal,
     ...options,
-    ...options.method ? { method: options.method.toUpperCase() } : {}
+    method,
+    signal: c.signal
   };
   const done = awaitLater(globalThis.fetch(url, opts));
   try {
@@ -70173,12 +70183,36 @@ var fetch = async (url, options = {}) => {
       }
     });
   } catch (e) {
+    if (e instanceof TimedOut) {
+      throw e;
+    }
+    const commonDetails = {
+      url: `${url}`,
+      method
+    };
+    if (options.signal?.aborted) {
+      const r = options.signal?.reason;
+      throw new FetchFailed({
+        ...commonDetails,
+        code: "ABORTED",
+        message: `${r}`
+      });
+    }
     if (e instanceof TypeError && isOfType(e.cause, toNodeError)) {
       if (invalidCertErrorCodes.includes(e.cause.code)) {
         throw new InvalidCertificate(`Invalid certificate for ${url}: ${e.cause.code}`);
       }
+      throw new FetchFailed({
+        ...commonDetails,
+        code: e.cause.code,
+        name: e.cause.name,
+        message: e.cause.message
+      }, { cause: e.cause });
     }
-    throw e;
+    throw new FetchFailed({
+      ...commonDetails,
+      code: "UNKNOWN_ERROR"
+    });
   }
 };
 var fetchJson = async (url, options) => {
@@ -73328,6 +73362,9 @@ var toGetWorkspaceHostArgs = toObject({
   replica: toUndefOr(toString),
   server: toUndefOr(toString)
 });
+var toMarkWorkspaceUsedArgs = toObject({
+  workspaceId: toNonNegativeInteger
+});
 var toConfigUpdateArgs = toObject({
   ...workspaceServiceArgs,
   envVars: toRecord(toString)
@@ -73408,6 +73445,12 @@ var workspaceDeploymentService = {
       response: toWorkspaceHost,
       request: toGetWorkspaceHostArgs,
       defaultOptions: { timeout: duration({ seconds: 30 }) }
+    }),
+    markWorkspaceUsed: rpc({
+      access: "internal",
+      response: toVoid,
+      request: toMarkWorkspaceUsedArgs,
+      defaultOptions: { timeout: duration({ seconds: 10 }) }
     }),
     removePvc: rpc({
       access: "internal",
@@ -75817,7 +75860,8 @@ var equal = (value, other) => {
 };
 
 // packages/utils/common/lib/cached.js
-var cached = (f, timeoutMs) => {
+var cached = (timeout, f) => {
+  const timeoutMs = toDuration(timeout).asMilliseconds();
   let lastArgs;
   let lastFinishedMs;
   let result;
@@ -75901,7 +75945,7 @@ var ProductsDb = ProductsDb_1 = class ProductsDb2 extends Products {
   constructor(db) {
     super();
     this.db = db;
-    this.listProductsCached = cached(async () => {
+    this.listProductsCached = cached({ minutes: 10 }, async () => {
       const ps = await this.db.selectMany("paymentservice.products", ["id", "name", "price", "isDeprecated"], "ALL_ROWS");
       return ps.map((p) => ({
         id: p.id,
@@ -75910,8 +75954,8 @@ var ProductsDb = ProductsDb_1 = class ProductsDb2 extends Products {
         priceUsd: checkHas(p.price),
         deprecated: p.isDeprecated
       }));
-    }, duration({ minutes: 10 }).asMilliseconds());
-    this.listDatabasePlansCached = cached(async () => {
+    });
+    this.listDatabasePlansCached = cached({ minutes: 10 }, async () => {
       const plans = toArray(toDatabasePlanDao)((await listDatabasePlans(this.db)).rows);
       return mapAsync(plans, async (p) => ({
         ...p,
@@ -75920,16 +75964,16 @@ var ProductsDb = ProductsDb_1 = class ProductsDb2 extends Products {
         disk: GiB(p.storageGb),
         engines: await this.listEnginesOfDatabasePlan(p.id)
       }));
-    }, duration({ minutes: 10 }).asMilliseconds());
-    this.listDockerImageHostingPlansCached = cached(async () => {
+    });
+    this.listDockerImageHostingPlansCached = cached({ minutes: 10 }, async () => {
       const plans = toArray(toDockerHostingPlanDao)((await listDockerImageHostingPlans(this.db)).rows);
       return plans.map((p) => ({
         ...p,
         cpu: p.cpuTenth / 10,
         memory: MiB(p.ramMb)
       }));
-    }, duration({ minutes: 10 }).asMilliseconds());
-    this.listWorkspacePlansCached = cached(async () => {
+    });
+    this.listWorkspacePlansCached = cached({ minutes: 10 }, async () => {
       const plans = toArray(toWorkspacePlanDao)((await listWorkspacePlans(this.db)).rows);
       return plans.map((p) => ({
         ...p,
@@ -75943,7 +75987,7 @@ var ProductsDb = ProductsDb_1 = class ProductsDb2 extends Products {
           onDemand: p.onDemand
         }
       }));
-    }, duration({ minutes: 10 }).asMilliseconds());
+    });
   }
   async get(id) {
     const products = await this.listProductsCached();
@@ -77558,8 +77602,8 @@ DeleteTeamFailed = __decorate16([
   registerError()
 ], DeleteTeamFailed);
 var NotOrganizationMember = NotOrganizationMember_1 = class NotOrganizationMember2 extends SimpleSerializableException {
-  static create(opts) {
-    return new NotOrganizationMember_1("You are not a member of this organization.", opts);
+  static create(msg = "You are not a member of this organization.", opts) {
+    return new NotOrganizationMember_1(msg, opts);
   }
 };
 NotOrganizationMember = NotOrganizationMember_1 = __decorate16([
@@ -78611,7 +78655,7 @@ var landscapeService = {
       access: "public",
       request: toObject({ workspaceId: toNonNegativeInteger }),
       response: toVoid,
-      defaultOptions: { timeout: { minutes: 1 } }
+      defaultOptions: { timeout: { minutes: 5 } }
     }),
     updateLandscape: rpc({
       access: "public",
